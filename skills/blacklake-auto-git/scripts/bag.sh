@@ -12,7 +12,10 @@
 set -uo pipefail
 
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BAG_VERSION="$(cat "$SKILL_DIR/VERSION" 2>/dev/null || echo 0.0.0)"
+# VERSION is absent in copies installed from SkillHub (it only accepts files with an
+# extension); the publisher writes the same number into SKILL.md as metadata.version.
+BAG_VERSION="$(cat "$SKILL_DIR/VERSION" 2>/dev/null || sed -n '1,/^---$/{/^---$/d;p}' "$SKILL_DIR/SKILL.md" 2>/dev/null | sed -n '/^metadata:/,/^[^ ]/s/^  version: *["'"'"']\{0,1\}\([0-9][0-9A-Za-z.+-]*\).*/\1/p' | head -n 1)"
+BAG_VERSION="${BAG_VERSION:-0.0.0}"
 # Source of truth for this skill (private repo; Dean's GitHub account has access)
 SOURCE_REPO="${BAG_SRC_URL:-https://github.com/D-Tony2020/skill-hub}"
 SOURCE_PATH="skills/blacklake-auto-git"

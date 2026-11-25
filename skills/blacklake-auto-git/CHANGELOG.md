@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1 - 2026-11-25
+
+- 从 SkillHub 安装的副本没有 VERSION 文件时，bag.sh 改读 SKILL.md 的 metadata.version，不再误判为 0.0.0；install_local.sh 只复制存在的文件
+
 ## 1.1.0 — 2026-11-25
 - SKILL.md 写明源码仓库（D-Tony2020/skill-hub，`skills/blacklake-auto-git`，main），以及修改、反馈和 PR 的流程。
 - 新增 `bag update`：从源码仓库快进 `~/skill-hub` 并重装。会提示是否需要重开会话，以及是否需要升级 Mac 端；本地有改动或分叉时拒绝执行。

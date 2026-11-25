@@ -40,11 +40,17 @@ version: 1.0.0         # semver；published 必填（或用 VERSION 文件）
 owner: dean
 tags: [git, gitlab]    # 写入插件市场的 keywords
 notes: 可选备注
+requires:              # 可选：运行时依赖，hub install / status 会检查
+  skills: [drawio-skill]
+  commands: [py]
+  env: [SOME_VAR]
 ```
 
 ## 校验规则
 
-`npm run validate` 检查：name 与目录同名、小写短横线、不超过 64 字符、不含 anthropic/claude；description 必填、不超过 1024 字符、不含 `<` `>`；status 合法；版本是 semver 且 hub.yaml 与 VERSION 一致；不允许顶层 `bin/`。未知 frontmatter 字段只告警。
+`npm run validate` 检查（错误会阻止发布，警告需要人看）：name 与目录同名、小写短横线、不超过 64 字符、不含 anthropic/claude；description 必填、不超过 1024 字符、不含 `<` `>`；status 合法；版本是 semver 且 hub.yaml 与 VERSION 一致；不允许顶层 `bin/`；`requires` 格式。告警：未知 frontmatter 字段、SKILL.md 提到但目录里没有的 `scripts/`、`references/` 文件（常见于只同步了 SKILL.md 的 claude.ai 副本）、写死本 skill 安装路径（如 `~/.claude/skills/<name>`，插件市场和 SkillHub 安装后路径不同）。
+
+Agent 按 `skills/skill-hub-ops/SKILL.md` 的手册来导入、升级、发布、安装、下架和巡检。
 
 ## 工具
 
@@ -57,11 +63,21 @@ notes: 可选备注
 | `npm run build:check` | CI 用：清单过期则失败 |
 | `npm run list` | 列出 skill、状态、版本 |
 | `node tools/hub/cli.mjs files <skill>` | 查看进入发布包的文件 |
+| `node tools/hub/cli.mjs import <dir>` | 把存量 skill 导入为 draft（去掉 plugin.json 和缓存，报告缺失文件和写死的路径） |
+| `node tools/hub/cli.mjs bump <skill> patch\|minor\|major -m 说明` | 升版本（VERSION 或 hub.yaml）并在 CHANGELOG 顶部加一条 |
+| `node tools/hub/cli.mjs install <skill> [--dest 目录]` | 装到 `~/.claude/skills/<skill>`，带 `.hub-source.json` 标记，不覆盖手工放置的同名目录 |
+| `node tools/hub/cli.mjs status` | 仓库版本 vs 本机安装版本，以及缺失的依赖 |
 | `npm test` | 工具自身的单元测试 |
 
 ## 发布到 SkillHub（一期：本机）
 
-SkillHub 部署在 http://localhost:8088。首次使用：
+SkillHub 部署在 http://localhost:8088，界面默认中文。在部署目录启动：
+
+```
+docker compose --env-file .env.release -f compose.release.yml -f compose.zh.yml up -d
+```
+
+漏掉 `compose.zh.yml` 会退回按浏览器语言显示。CLI 首次使用：
 
 ```
 npm i -g @astron-team/skillhub

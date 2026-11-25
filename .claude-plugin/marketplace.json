@@ -6,5 +6,19 @@
   "metadata": {
     "description": "Skills 工厂产出的自定义 Claude Skills（由 tools/hub 生成，请勿手改）"
   },
-  "plugins": []
+  "plugins": [
+    {
+      "name": "skill-hub-ops",
+      "source": "./skills/skill-hub-ops",
+      "description": "运维 Skills 工厂的 Skill Hub：把存量 skill 导入 skill-hub 仓库、改版本、发版、发布到 SkillHub 看板、安装到本机、下架和巡检。用户说\"把这个 skill 放进 Hub / 上架 / 发布 / 升级版本 / 装到我电脑 / 下架 / 看看各端版本\"，或提到 skill-hub、SkillHub、技能看板、blacklake-skill-hub 时使用。",
+      "version": "0.1.0",
+      "skills": [
+        "."
+      ],
+      "keywords": [
+        "skill-hub",
+        "ops"
+      ]
+    }
+  ]
 }

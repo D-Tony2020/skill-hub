@@ -16,9 +16,10 @@ const KNOWN_FRONTMATTER = new Set([
   'when_to_use', 'argument-hint', 'disable-model-invocation', 'user-invocable',
   'model', 'effort', 'context', 'agent', 'hooks', 'paths', 'shell',
 ]);
-const KNOWN_HUB_KEYS = new Set(['version', 'status', 'owner', 'tags', 'notes']);
+const KNOWN_HUB_KEYS = new Set(['version', 'status', 'owner', 'tags', 'notes', 'requires', 'source']);
+const REQUIRES_KEYS = new Set(['skills', 'commands', 'env']);
 // Files that are development material, not part of what an agent loads.
-const PACKAGE_EXCLUDES = new Set(['hub.yaml', 'tests', 'evals', '.gitattributes', '.DS_Store', '__pycache__']);
+const PACKAGE_EXCLUDES = new Set(['hub.yaml', 'tests', 'evals', '.gitattributes', '.DS_Store', '__pycache__', '.hub-source.json']);
 
 const NAME_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const SEMVER_RE = /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/;
@@ -75,6 +76,12 @@ export function loadSkill(skillsDir, dirName) {
   skill.version = hub.version != null ? String(hub.version) : skill.versionFile;
   skill.status = hub.status ?? 'draft';
   skill.tags = Array.isArray(hub.tags) ? hub.tags.map(String) : [];
+  const req = hub.requires && typeof hub.requires === 'object' ? hub.requires : {};
+  skill.requires = {
+    skills: Array.isArray(req.skills) ? req.skills.map(String) : [],
+    commands: Array.isArray(req.commands) ? req.commands.map(String) : [],
+    env: Array.isArray(req.env) ? req.env.map(String) : [],
+  };
   return skill;
 }
 
@@ -128,6 +135,26 @@ export function validateSkill(skill) {
   if (skill.version != null && !SEMVER_RE.test(skill.version)) errors.push(`version "${skill.version}" is not semver (x.y.z)`);
   if (skill.status === 'published' && skill.version == null) errors.push('a published skill needs a version (hub.yaml version or VERSION file)');
   if (fs.existsSync(path.join(skill.dir, 'bin'))) errors.push('top-level bin/ is rejected by claude.ai organization sync; use scripts/');
+
+  const req = skill.hub?.requires;
+  if (req != null) {
+    if (typeof req !== 'object' || Array.isArray(req)) {
+      errors.push('hub.yaml requires must be a mapping with skills / commands / env lists');
+    } else {
+      for (const [key, value] of Object.entries(req)) {
+        if (!REQUIRES_KEYS.has(key)) warnings.push(`hub.yaml requires.${key} is not recognised (use skills, commands, env)`);
+        else if (!Array.isArray(value)) errors.push(`hub.yaml requires.${key} must be a list`);
+      }
+    }
+  }
+  const missing = findMissingReferences(skill);
+  if (missing.length) {
+    // A warning, not an error: some of these may belong to a skill listed in requires.skills.
+    warnings.push(`SKILL.md refers to files that are not in the skill folder: ${missing.join(', ')} (fine only if they belong to a required skill)`);
+  }
+  for (const hit of findHardcodedPaths(skill)) {
+    warnings.push(`${hit.file}:${hit.line} hardcodes an install path (${hit.text}); resolve paths from the folder that holds SKILL.md, since plugin and SkillHub installs live elsewhere`);
+  }
 
   return { errors, warnings };
 }
@@ -217,4 +244,158 @@ export function stageForSkillHub(skill, outDir) {
     }
   }
   return { dir: outDir, files: kept, dropped };
+}
+
+// ---- Agent operations: install-path checks, import, bump, install ----------
+
+const TEXT_EXT = /\.(md|txt|sh|bash|ps1|psm1|py|js|mjs|cjs|ts|json|ya?ml|toml|cmd|bat)$/i;
+// ~/.claude/skills/<x>, $HOME/.claude/skills, %USERPROFILE%\.claude\skills, C:\Users\me\.claude\skills ...
+const SKILL_PATH_RE = /(?:~|\$HOME|\$\{HOME\}|%USERPROFILE%|\$env:USERPROFILE|[A-Za-z]:\\Users\\[^\\\s"'`]+|\/(?:home|Users)\/[^/\s"'`]+)[\\/]+\.claude[\\/]+skills(?:[\\/]+[A-Za-z0-9_.-]+)?/g;
+
+export function findHardcodedPaths(skill) {
+  const hits = [];
+  const files = fs.existsSync(skill.dir) ? packageFiles(skill) : [];
+  for (const rel of files) {
+    if (!TEXT_EXT.test(rel) && rel !== 'SKILL.md') continue;
+    const lines = fs.readFileSync(path.join(skill.dir, rel), 'utf8').split(/\r?\n/);
+    lines.forEach((line, i) => {
+      for (const m of line.matchAll(SKILL_PATH_RE)) {
+        // Only a path to this skill's own folder breaks when it is installed elsewhere;
+        // generic mentions of ~/.claude/skills (docs, installers) are fine.
+        const last = m[0].split(/[\\/]+/).pop();
+        if (last === skill.dirName) hits.push({ file: rel, line: i + 1, text: m[0] });
+      }
+    });
+  }
+  return hits;
+}
+
+// Paths like scripts/diagram.py or references/style-guide.md mentioned in SKILL.md
+// must ship with the skill; a copy synced from claude.ai often holds SKILL.md only.
+export function findMissingReferences(skill) {
+  const file = path.join(skill.dir, 'SKILL.md');
+  if (!fs.existsSync(file)) return [];
+  const text = fs.readFileSync(file, 'utf8');
+  const refs = new Set();
+  for (const m of text.matchAll(/(?<![\w.-])(scripts|references|assets|templates)[\\/]([\w.\-\\/]*\.[A-Za-z0-9]+)/g)) {
+    refs.add(`${m[1]}/${m[2].replace(/\\/g, '/')}`);
+  }
+  return [...refs].filter((rel) => !fs.existsSync(path.join(skill.dir, rel))).sort();
+}
+
+const IMPORT_SKIP = new Set(['.git', 'node_modules', '__pycache__', '.DS_Store', '.venv', 'venv', '.hub-source.json']);
+
+function copyTree(src, dest, skip) {
+  fs.mkdirSync(dest, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    if (skip.has(entry.name)) continue;
+    const s = path.join(src, entry.name);
+    const d = path.join(dest, entry.name);
+    if (entry.isDirectory()) copyTree(s, d, skip);
+    else if (entry.isFile()) fs.copyFileSync(s, d);
+  }
+}
+
+// Bring an existing skill folder (local ~/.claude/skills/x, plugin cache, unzipped
+// claude.ai export) into skills/<name> as a draft. Returns a report the agent can act on.
+export function importSkill(root, srcDir, { name, version, force = false } = {}) {
+  if (!fs.existsSync(path.join(srcDir, 'SKILL.md'))) throw new Error(`${srcDir} has no SKILL.md`);
+  const fm = parseFrontmatter(fs.readFileSync(path.join(srcDir, 'SKILL.md'), 'utf8'));
+  if (fm.error) throw new Error(fm.error);
+  const skillName = name ?? fm.data.name ?? path.basename(srcDir);
+  const dest = path.join(root, 'skills', skillName);
+  if (fs.existsSync(dest)) {
+    if (!force) throw new Error(`skills/${skillName} already exists (use --force to replace it)`);
+    fs.rmSync(dest, { recursive: true, force: true });
+  }
+
+  let pluginVersion = null;
+  const pluginJson = path.join(srcDir, '.claude-plugin', 'plugin.json');
+  if (fs.existsSync(pluginJson)) {
+    try { pluginVersion = JSON.parse(fs.readFileSync(pluginJson, 'utf8')).version ?? null; } catch { /* ignore */ }
+  }
+  const versionFile = fs.existsSync(path.join(srcDir, 'VERSION')) ? fs.readFileSync(path.join(srcDir, 'VERSION'), 'utf8').trim() : null;
+  // A plugin.json would turn the folder into its own plugin; the marketplace entry is the manifest here.
+  copyTree(srcDir, dest, new Set([...IMPORT_SKIP, '.claude-plugin']));
+
+  const finalVersion = version ?? versionFile ?? pluginVersion ?? fm.data.metadata?.version ?? '0.1.0';
+  if (!fs.existsSync(path.join(dest, 'hub.yaml'))) {
+    const hub = { status: 'draft' };
+    if (!versionFile || version) hub.version = String(finalVersion);
+    fs.writeFileSync(path.join(dest, 'hub.yaml'), YAML.stringify(hub));
+  }
+  if (version && versionFile) fs.writeFileSync(path.join(dest, 'VERSION'), `${version}\n`);
+
+  const skill = loadSkill(path.join(root, 'skills'), skillName);
+  const { errors, warnings } = validateSkill(skill);
+  const files = packageFiles(skill);
+  return { name: skillName, dir: dest, version: skill.version, files, errors, warnings, onlySkillMd: files.filter((f) => f !== 'hub.yaml').length <= 1 };
+}
+
+export function nextVersion(current, part) {
+  if (SEMVER_RE.test(part)) return part;
+  const m = String(current ?? '').match(/^(\d+)\.(\d+)\.(\d+)/);
+  if (!m) throw new Error(`current version "${current}" is not semver`);
+  const [maj, min, pat] = m.slice(1).map(Number);
+  if (part === 'major') return `${maj + 1}.0.0`;
+  if (part === 'minor') return `${maj}.${min + 1}.0`;
+  if (part === 'patch') return `${maj}.${min}.${pat + 1}`;
+  throw new Error('bump takes major, minor, patch or an explicit x.y.z');
+}
+
+// Raise the version wherever it lives (VERSION file wins) and open a CHANGELOG entry.
+export function bumpSkill(skill, part, note, today = new Date().toISOString().slice(0, 10)) {
+  const next = nextVersion(skill.version, part);
+  const hubFile = path.join(skill.dir, 'hub.yaml');
+  if (skill.versionFile != null) fs.writeFileSync(path.join(skill.dir, 'VERSION'), `${next}\n`);
+  if (skill.versionFile == null || skill.hub?.version != null) {
+    const doc = fs.existsSync(hubFile) ? YAML.parseDocument(fs.readFileSync(hubFile, 'utf8')) : new YAML.Document({});
+    doc.set('version', next);
+    fs.writeFileSync(hubFile, doc.toString());
+  }
+  const changelog = path.join(skill.dir, 'CHANGELOG.md');
+  const entry = `## ${next} - ${today}\n\n- ${note || 'TODO: describe the change'}\n\n`;
+  if (fs.existsSync(changelog)) {
+    const text = fs.readFileSync(changelog, 'utf8');
+    const at = text.search(/^## /m);
+    fs.writeFileSync(changelog, at === -1 ? `${text.trimEnd()}\n\n${entry}` : text.slice(0, at) + entry + text.slice(at));
+  } else {
+    fs.writeFileSync(changelog, `# Changelog\n\n${entry}`);
+  }
+  return next;
+}
+
+export const INSTALL_MARKER = '.hub-source.json';
+
+// Copy the release files of a skill into <destRoot>/<name>. Refuses to replace a
+// folder that this tool did not install, so hand-made copies are never lost.
+export function installSkill(skill, destRoot, { force = false, commit = null } = {}) {
+  const dest = path.join(destRoot, skill.dirName);
+  const marker = path.join(dest, INSTALL_MARKER);
+  if (fs.existsSync(dest) && !fs.existsSync(marker) && !force) {
+    throw new Error(`${dest} exists and was not installed by skill-hub (use --force to replace it)`);
+  }
+  const tmp = `${dest}.hub-tmp`;
+  fs.rmSync(tmp, { recursive: true, force: true });
+  for (const rel of packageFiles(skill)) {
+    const to = path.join(tmp, rel);
+    fs.mkdirSync(path.dirname(to), { recursive: true });
+    fs.copyFileSync(path.join(skill.dir, rel), to);
+  }
+  fs.writeFileSync(path.join(tmp, INSTALL_MARKER), `${JSON.stringify({ name: skill.dirName, version: skill.version, commit, installedAt: new Date().toISOString() }, null, 2)}\n`);
+  fs.rmSync(dest, { recursive: true, force: true });
+  fs.renameSync(tmp, dest);
+  return dest;
+}
+
+export function readInstalled(destRoot) {
+  if (!fs.existsSync(destRoot)) return [];
+  return fs.readdirSync(destRoot, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && fs.existsSync(path.join(destRoot, e.name, 'SKILL.md')))
+    .map((e) => {
+      const marker = path.join(destRoot, e.name, INSTALL_MARKER);
+      let info = null;
+      try { info = JSON.parse(fs.readFileSync(marker, 'utf8')); } catch { /* not ours */ }
+      return { name: e.name, managed: !!info, version: info?.version ?? null };
+    });
 }

@@ -5,7 +5,7 @@ description: {{description}}
 
 # {{title}}
 
-> 草稿：由 session-distiller 从历史会话提炼（run {{run}}，形态 {{kind}}）。
+> 草稿：由 session-distiller 从历史会话提炼（run {{run}}，形态 {{kind}}，层级 {{layer}}，建立在 {{builds_on}} 之上）。
 > 上架前按 skill-creator 流程补全：写清步骤、补脚本、写评测，再把 hub.yaml 的 status 改为 published。
 
 ## 解决什么问题

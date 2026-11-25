@@ -10,6 +10,8 @@
       "id": "purchase-doc-normalizer",
       "title": "采购单据标准化",
       "kind": "rule+code",
+      "layer": "industry",
+      "builds_on": ["excel-io"],
       "summary": "把各家 ERP 导出的采购单 Excel 清洗成统一字段：字段映射用 YAML 配置，脚本做单位换算、供应商编码映射和必填校验，输出标准 CSV 和问题清单。",
       "problem": "每个客户项目都要重写一次清洗脚本，并在单位换算和编码映射上反复返工。",
       "evidence": [
@@ -39,12 +41,14 @@
 |---|---|---|
 | `id` | 是 | 将来的 skill 名。小写加短横线，不超过 64 字符，不含 claude 或 anthropic。在本次 run 中唯一 |
 | `title` | 是 | 中文短名 |
-| `kind` | 是 | `rule` / `rule+code` / `methodology` / `workflow` / `component` |
+| `kind` | 是 | `rule` / `rule+code` / `methodology` / `workflow` / `interaction` / `component` |
+| `layer` | 是 | `foundation` 基座 / `industry` 行业资产 / `project` 项目资产，判断标准见 rubric.md 第 2 节。`project` 固定为 C 档，只用来记录划分结果 |
+| `builds_on` | 否 | 依赖的已有 skill 名或同批候选 id，用于在 Skill Hub 里拼装。写了不存在的名字会告警 |
 | `summary` | 是 | 资产本身是什么、怎么用。scaffold 会把它写进 skill 的 description |
 | `problem` | 是 | 它解决的反复出现的问题 |
 | `evidence` | 是 | 至少 1 条。`session` 写会话 id 或其前缀，必须在本次 run 里；`turns` 必须是摘要里真实存在的轮次；`quote` 可选，写简短原话（已脱敏） |
 | `scores` | 是 | `fit` / `reuse` / `leverage` / `maturity`，整数 0–5，标准见 rubric.md |
 | `fit_rationale` | 是 | 对应画像里的哪个目标或领域 |
 | `dedupe` | 是 | `action`: `new` / `merge` / `duplicate`；后两种必须写 `target`（已有 skill 名） |
-| `packaging` | 是 | `form`: `skill` / `rule-snippet` / `reference`；`scripts` 写计划包含的脚本（`rule+code` 必须写）；`triggers` 写用户会说的话，会进入 description；`tags` 写进 hub.yaml |
+| `packaging` | 是 | `form`: `skill` / `memory`（记忆文件；旧写法 `rule-snippet` 等同于它）/ `reference`（必须配合 merge）；`scripts` 写计划包含的脚本（`rule+code` 必须写）；`triggers` 写用户会说的话，会进入 description；`tags` 写进 hub.yaml |
 | `risks` | 否 | 敏感信息、客户特定逻辑等注意事项 |

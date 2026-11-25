@@ -162,14 +162,15 @@ class TestPipeline(Env):
 
 def good_candidates(run_id):
     return {"run": run_id, "candidates": [
-        {"id": "purchase-doc-normalizer", "title": "采购单据标准化", "kind": "rule+code",
+        {"id": "purchase-doc-normalizer", "title": "采购单据标准化", "kind": "rule+code", "layer": "industry",
+         "builds_on": ["existing-skill"],
          "summary": "清洗 ERP 采购单", "problem": "每个项目都重写", "fit_rationale": "组件库",
          "evidence": [{"session": "aaaa1111", "turns": ["T3"], "quote": "单位换算"},
                       {"session": "bbbb2222", "turns": ["T1", "T2"]}],
          "scores": {"fit": 5, "reuse": 4, "leverage": 4, "maturity": 3},
          "dedupe": {"action": "new", "target": None},
          "packaging": {"form": "skill", "scripts": ["normalize.py"], "triggers": ["清洗采购单"], "tags": ["procurement"]}},
-        {"id": "low-fit-thing", "title": "低契合", "kind": "rule", "summary": "x", "problem": "y", "fit_rationale": "z",
+        {"id": "low-fit-thing", "title": "低契合", "kind": "rule", "layer": "foundation", "summary": "x", "problem": "y", "fit_rationale": "z",
          "evidence": [{"session": "aaaa1111", "turns": ["T1"]}],
          "scores": {"fit": 2, "reuse": 5, "leverage": 5, "maturity": 5},
          "dedupe": {"action": "merge", "target": "existing-skill"}, "packaging": {"form": "rule-snippet"}}]}
@@ -188,6 +189,52 @@ class TestCandidates(Env):
         self.assertEqual(rc, 1)
         for frag in ("T99", "scores.fit", "kebab-case", "dedupe.target"):
             self.assertIn(frag, out)
+
+    def test_layers_forms_and_composition(self):
+        rd = self.digest()
+        c = good_candidates(rd.name)
+        c["candidates"].append(
+            {"id": "line3-changeover", "title": "产线换型表", "kind": "rule", "layer": "project", "summary": "s",
+             "problem": "p", "fit_rationale": "f", "evidence": [{"session": "aaaa1111", "turns": ["T1"]}],
+             "scores": {"fit": 5, "reuse": 5, "leverage": 5, "maturity": 5}, "dedupe": {"action": "new"},
+             "packaging": {"form": "skill"}, "builds_on": ["ghost-skill"]})
+        c["candidates"].append(
+            {"id": "po-intake-dialogue", "title": "单据类需求的协作方式", "kind": "interaction", "layer": "foundation",
+             "summary": "先给样例单据，再确认字段映射，最后跑样例", "problem": "每个场景重新摸索怎么和 Agent 配合",
+             "fit_rationale": "交互流程沉淀", "evidence": [{"session": "aaaa1111", "turns": ["T3"]}, {"session": "bbbb2222", "turns": ["T1"]}],
+             "scores": {"fit": 5, "reuse": 4, "leverage": 3, "maturity": 3}, "dedupe": {"action": "new"},
+             "packaging": {"form": "rule-snippet", "triggers": ["新单据场景开工时"]}, "builds_on": ["purchase-doc-normalizer"]})
+        sd.write_json(rd / "candidates.json", c)
+        rc, out, last = run("validate")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("project-layer asset stays", out)
+        self.assertIn("ghost-skill", out)
+        self.assertNotIn("purchase-doc-normalizer` is neither", out)
+        run("report")
+        rep_md = (rd / "report.md").read_text(encoding="utf-8")
+        row = next(l for l in rep_md.splitlines() if "line3-changeover" in l and l.startswith("|"))
+        self.assertIn("| C |", row)  # project layer forced to C despite perfect scores
+        self.assertIn("项目资产", row)
+        self.assertIn("interaction → memory", rep_md)  # rule-snippet alias normalised
+        run("decide", rd.name, "po-intake-dialogue", "accept")
+        rc, out, last = run("scaffold", rd.name, "po-intake-dialogue")
+        self.assertEqual(rc, 0, out)
+        mem = Path(self.env["SD_HOME"]) / "memory-drafts" / "po-intake-dialogue.md"
+        self.assertIn("type: feedback", mem.read_text(encoding="utf-8"))
+        run("decide", rd.name, "purchase-doc-normalizer", "accept")
+        run("scaffold", rd.name, "purchase-doc-normalizer")
+        hub_yaml = (self.hub / "skills" / "purchase-doc-normalizer" / "hub.yaml").read_text(encoding="utf-8")
+        self.assertIn("layer-industry", hub_yaml)
+        self.assertIn("`existing-skill`", (self.hub / "skills" / "purchase-doc-normalizer" / "SKILL.md").read_text(encoding="utf-8"))
+
+    def test_layer_required(self):
+        rd = self.digest()
+        c = good_candidates(rd.name)
+        del c["candidates"][0]["layer"]
+        sd.write_json(rd / "candidates.json", c)
+        rc, out, last = run("validate")
+        self.assertEqual(rc, 1)
+        self.assertIn("missing `layer`", out)
 
     def test_empty_candidates_need_reason(self):
         rd = self.digest()
@@ -305,6 +352,17 @@ class TestInstall(Env):
                            env={**os.environ})
         self.assertIn("RESULT ok version", r.stdout)
         self.assertIn("source.path=skills/session-distiller", r.stdout)
+
+    def test_init_with_preset_profile(self):
+        rc, _, last = run("init", "--profile", "blacklake-fde")
+        self.assertIn("E_EXISTS", last)  # template already copied in setUp
+        rc, _, last = run("init", "--profile", "blacklake-fde", "--force")
+        self.assertEqual(rc, 0, last)
+        prof = (Path(self.env["SD_HOME"]) / "profile.md").read_text(encoding="utf-8")
+        self.assertIn("资产分层", prof)
+        self.assertNotIn("TODO", prof)
+        rc, _, last = run("init", "--profile", "nope")
+        self.assertIn("E_ARGS", last)
 
     def test_doctor_and_status(self):
         rc, out, last = run("doctor")

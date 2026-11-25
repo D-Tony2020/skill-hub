@@ -598,10 +598,19 @@ def cmd_init(args):
     h = home()
     h.mkdir(parents=True, exist_ok=True)
     created = []
-    if not (h / "config.json").exists() or args.force:
+    if not (h / "config.json").exists():
         write_json(h / "config.json", default_config())
         created.append("config.json")
-    if not (h / "profile.md").exists():
+    if args.profile:
+        src = SKILL_DIR / "assets" / "profiles" / f"{args.profile}.md"
+        if not src.exists():
+            names = sorted(p.stem for p in (SKILL_DIR / "assets" / "profiles").glob("*.md"))
+            raise Fail("E_ARGS", f"no preset profile '{args.profile}'; available: {', '.join(names) or 'none'}")
+        if (h / "profile.md").exists() and not args.force:
+            raise Fail("E_EXISTS", f"{h / 'profile.md'} exists; add --force to replace it with preset {args.profile}")
+        shutil.copy(src, h / "profile.md")
+        created.append(f"profile.md({args.profile})")
+    elif not (h / "profile.md").exists():
         shutil.copy(SKILL_DIR / "assets" / "profile.template.md", h / "profile.md")
         created.append("profile.md")
     if not (h / "redact.txt").exists():
@@ -789,7 +798,10 @@ def cmd_catalog(args):
 
 
 # ------------------------------------------------------------- candidates ---
-KINDS = {"rule", "rule+code", "methodology", "workflow", "component"}
+KINDS = {"rule", "rule+code", "methodology", "workflow", "interaction", "component"}
+LAYERS = {"foundation": "基座", "industry": "行业资产", "project": "项目资产"}
+FORMS = {"skill", "memory", "reference"}
+FORM_ALIASES = {"rule-snippet": "memory"}
 SCORE_KEYS = ("fit", "reuse", "leverage", "maturity")
 WEIGHTS = {"fit": 0.35, "reuse": 0.25, "leverage": 0.20, "maturity": 0.20}
 SLUG = re.compile(r"^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$")
@@ -799,9 +811,9 @@ def priority(sc: dict) -> float:
     return round(sum(WEIGHTS[k] * float(sc.get(k, 0)) for k in SCORE_KEYS), 2)
 
 
-def tier(sc: dict) -> str:
+def tier(sc: dict, layer: str = "") -> str:
     p = priority(sc)
-    if sc.get("fit", 0) < 3:
+    if sc.get("fit", 0) < 3 or layer == "project":
         return "C"
     if p >= 3.6 and (sc.get("reuse", 0) >= 3 or sc.get("leverage", 0) >= 4):
         return "A"
@@ -823,9 +835,11 @@ def validate_candidates(rd: Path, led: dict):
     if not cands and not str(data.get("none_reason", "")).strip():
         errs.append("empty `candidates` needs a `none_reason` explaining why nothing was worth keeping")
     ids = set()
+    cand_ids = {c.get("id") for c in cands if isinstance(c, dict)}
+    known_skills = {x["name"] for x in existing_skills(load_config())}
     for i, c in enumerate(cands):
         where = f"candidates[{i}]({c.get('id', '?')})"
-        for k in ("id", "title", "kind", "summary", "problem", "evidence", "scores", "fit_rationale", "dedupe", "packaging"):
+        for k in ("id", "title", "kind", "layer", "summary", "problem", "evidence", "scores", "fit_rationale", "dedupe", "packaging"):
             if k not in c:
                 errs.append(f"{where}: missing `{k}`")
         cid = c.get("id", "")
@@ -836,6 +850,10 @@ def validate_candidates(rd: Path, led: dict):
         ids.add(cid)
         if c.get("kind") not in KINDS:
             errs.append(f"{where}: kind must be one of {sorted(KINDS)}")
+        if c.get("layer") not in LAYERS:
+            errs.append(f"{where}: layer must be one of {sorted(LAYERS)}")
+        elif c["layer"] == "project" and (c.get("packaging") or {}).get("form") == "skill":
+            warns.append(f"{where}: a project-layer asset stays in its project; distill only what generalizes (industry/foundation)")
         sc = c.get("scores") or {}
         for k in SCORE_KEYS:
             v = sc.get(k)
@@ -866,8 +884,19 @@ def validate_candidates(rd: Path, led: dict):
         if prev and prev.get("decision") == "reject":
             warns.append(f"{where}: was rejected before ({prev.get('reason', 'no reason')}); drop it unless there is new evidence")
         pk = c.get("packaging") or {}
-        if pk.get("form") not in ("skill", "rule-snippet", "reference"):
-            errs.append(f"{where}: packaging.form must be skill|rule-snippet|reference")
+        if pk.get("form") in FORM_ALIASES:
+            pk["form"] = FORM_ALIASES[pk["form"]]
+        if pk.get("form") not in FORMS:
+            errs.append(f"{where}: packaging.form must be skill|memory|reference")
+        if pk.get("form") == "reference" and d.get("action") != "merge":
+            warns.append(f"{where}: a reference attaches to an existing skill; set dedupe.action=merge with its target")
+        bo = c.get("builds_on") or []
+        if not isinstance(bo, list):
+            errs.append(f"{where}: builds_on must be a list of skill or candidate ids")
+        else:
+            for b in bo:
+                if b not in known_skills and b not in cand_ids:
+                    warns.append(f"{where}: builds_on `{b}` is neither an existing skill nor a candidate in this run")
         if c.get("kind") == "rule+code" and not pk.get("scripts"):
             warns.append(f"{where}: kind rule+code but packaging.scripts is empty")
     return data, errs, warns
@@ -895,25 +924,30 @@ def cmd_report(args):
         raise Fail("E_SCHEMA", "fix candidates.json first (sd validate)")
     idx = read_json(rd / "index.json", {"sessions": []})
     titles = {s["id"]: s.get("title", "") for s in idx["sessions"]}
-    cands = sorted(data["candidates"], key=lambda c: ("ABC".index(tier(c["scores"])), -priority(c["scores"])))
+    cands = sorted(data["candidates"], key=lambda c: ("ABC".index(tier(c["scores"], c.get("layer", ""))), -priority(c["scores"])))
     L = [f"# 候选资产清单 · run {rd.name}", "",
          f"来自 {len(idx['sessions'])} 个会话，共 {len(cands)} 个候选。"
-         f"A 档 {sum(tier(c['scores']) == 'A' for c in cands)} 个，B 档 {sum(tier(c['scores']) == 'B' for c in cands)} 个，"
-         f"C 档 {sum(tier(c['scores']) == 'C' for c in cands)} 个。", "",
+         f"A 档 {sum(tier(c['scores'], c.get('layer', '')) == 'A' for c in cands)} 个，B 档 {sum(tier(c['scores'], c.get('layer', '')) == 'B' for c in cands)} 个，"
+         f"C 档 {sum(tier(c['scores'], c.get('layer', '')) == 'C' for c in cands)} 个。", "",
          "评分：契合度 fit ×0.35 + 复用度 reuse ×0.25 + 杠杆 leverage ×0.20 + 成熟度 maturity ×0.20（各 0–5）。"
          "A 档建议采纳，C 档默认不做。", "",
-         "| # | 档 | 优先级 | 候选 | 形态 | 去重 | fit/reuse/lev/mat |", "|---|---|---|---|---|---|---|"]
+         "资产分层：基座（跨行业）> 行业资产（制造业通用）> 项目资产（只在本项目成立，留在项目内，固定为 C 档）。", "",
+         "| # | 档 | 优先级 | 层级 | 候选 | 形态 → 落地 | 去重 | 建立在 | fit/reuse/lev/mat |",
+         "|---|---|---|---|---|---|---|---|---|"]
     for n, c in enumerate(cands, 1):
         sc, d = c["scores"], c["dedupe"]
         dd = d["action"] + (f"→{d['target']}" if d.get("target") else "")
-        L.append(f"| {n} | {tier(sc)} | {priority(sc)} | `{c['id']}` {c['title']} | {c['kind']} | {dd} | "
+        bo = ", ".join(c.get("builds_on") or []) or "-"
+        L.append(f"| {n} | {tier(sc, c.get('layer', ''))} | {priority(sc)} | {LAYERS.get(c.get('layer'), '?')} | `{c['id']}` {c['title']} | "
+                 f"{c['kind']} → {c['packaging'].get('form')} | {dd} | {bo} | "
                  f"{sc['fit']}/{sc['reuse']}/{sc['leverage']}/{sc['maturity']} |")
     L.append("")
     if not cands:
         L += ["本次没有值得固化的资产。", "", f"原因：{data.get('none_reason', '')}", ""]
     for n, c in enumerate(cands, 1):
         sc = c["scores"]
-        L += [f"## {n}. [{tier(sc)}] {c['title']}  (`{c['id']}`)", "",
+        L += [f"## {n}. [{tier(sc, c.get('layer', ''))}] {c['title']}  (`{c['id']}`)", "",
+              f"**层级**：{LAYERS.get(c.get('layer'), '?')}" + (f"；建立在 {', '.join(c['builds_on'])} 之上" if c.get("builds_on") else ""), "",
               f"**形态**：{c['kind']} → {c['packaging'].get('form')}"
               + (f"，脚本：{', '.join(c['packaging'].get('scripts') or [])}" if c['packaging'].get('scripts') else ""), "",
               f"**解决什么**：{c['problem']}", "", f"**内容**：{c['summary']}", "",
@@ -936,12 +970,12 @@ def cmd_report(args):
     (rd / "report.md").write_text("\n".join(L) + "\n", encoding="utf-8")
     for c in cands:
         led["candidates"].setdefault(c["id"], {}).update(
-            {"title": c["title"], "kind": c["kind"], "run": rd.name, "tier": tier(c["scores"]),
+            {"title": c["title"], "kind": c["kind"], "layer": c.get("layer"), "form": c["packaging"].get("form"), "run": rd.name, "tier": tier(c["scores"], c.get("layer", "")),
              "priority": priority(c["scores"])})
         led["candidates"][c["id"]].setdefault("decision", "pending")
     save_ledger(led)
     info(f"report: {rd / 'report.md'}")
-    return f"report run={rd.name} candidates={len(cands)} A={sum(tier(c['scores']) == 'A' for c in cands)}"
+    return f"report run={rd.name} candidates={len(cands)} A={sum(tier(c['scores'], c.get('layer', '')) == 'A' for c in cands)}"
 
 
 def cmd_decide(args):
@@ -980,7 +1014,7 @@ def cmd_status(args):
     print(f"sessions processed: {len(led['sessions'])}")
     print(f"runs: {', '.join(runs[-5:]) or '-'}")
     for cid, c in sorted(led["candidates"].items(), key=lambda x: (x[1].get("decision") != "pending", x[0])):
-        print(f"  [{c.get('decision', 'pending'):<7}] {c.get('tier', '?')} {cid:<36} {c.get('title', '')}")
+        print(f"  [{c.get('decision', 'pending'):<7}] {c.get('tier', '?')} {LAYERS.get(c.get('layer'), '?'):<4} {cid:<36} {c.get('title', '')}")
     return "status " + " ".join(f"{k}={v}" for k, v in sorted(by.items()))
 
 
@@ -1084,12 +1118,17 @@ def cmd_scaffold(args):
     dec = led["candidates"].get(args.id, {}).get("decision")
     if dec != "accept" and not args.force:
         raise Fail("E_NOT_ACCEPTED", f"{args.id} decision is {dec or 'pending'}; record `sd decide ... accept` first")
+    red = Redactor()
+    form = FORM_ALIASES.get(c["packaging"].get("form"), c["packaging"].get("form"))
+    if form == "memory":
+        return scaffold_memory(c, rd, red, led, args)
+    if form == "reference":
+        raise Fail("E_FORM", f"{args.id} is a reference for `{c['dedupe'].get('target')}`: add it to that skill's references/ in its source and bump its version")
     hub = Path(os.path.expanduser(args.hub or cfg.get("skill_hub", "")))
     base = hub / "skills" if (hub / "skills").is_dir() else home() / "drafts"
     dest = base / args.id
     if dest.exists():
         raise Fail("E_EXISTS", f"{dest} already exists")
-    red = Redactor()
     tpl = (SKILL_DIR / "assets" / "SKILL.template.md").read_text(encoding="utf-8")
     desc = _one_line(c["summary"], 600)
     if c["packaging"].get("triggers"):
@@ -1098,10 +1137,13 @@ def cmd_scaffold(args):
     body = (tpl.replace("{{name}}", c["id"]).replace("{{description}}", red(desc))
             .replace("{{title}}", red(c["title"])).replace("{{problem}}", red(c["problem"]))
             .replace("{{summary}}", red(c["summary"])).replace("{{kind}}", c["kind"])
-            .replace("{{run}}", rd.name))
+            .replace("{{run}}", rd.name).replace("{{layer}}", LAYERS.get(c.get("layer"), "?"))
+            .replace("{{builds_on}}", "、".join(f"`{b}`" for b in c.get("builds_on") or []) or "无"))
     dest.mkdir(parents=True)
     (dest / "SKILL.md").write_text(body, encoding="utf-8")
-    tags = c["packaging"].get("tags") or [c["kind"].replace("+", "-")]
+    tags = list(c["packaging"].get("tags") or [c["kind"].replace("+", "-")])
+    if c.get("layer"):
+        tags.append(f"layer-{c['layer']}")
     (dest / "hub.yaml").write_text(
         f"status: draft\nversion: 0.1.0\nowner: {cfg.get('owner', 'dean')}\n"
         f"tags: [{', '.join(tags)}]\nnotes: distilled by session-distiller run {rd.name}\n", encoding="utf-8")
@@ -1142,6 +1184,25 @@ def cmd_scaffold(args):
     save_ledger(led)
     info(f"scaffold: {dest}")
     return f"scaffold {args.id} -> {dest}"
+
+
+def scaffold_memory(c, rd, red, led, args):
+    """A memory-form asset becomes a Claude memory/CLAUDE.md draft, not a skill."""
+    dest = home() / "memory-drafts" / f"{c['id']}.md"
+    if dest.exists() and not args.force:
+        raise Fail("E_EXISTS", f"{dest} already exists")
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    ev = "; ".join(f"{e['session'][:8]} {','.join(e.get('turns', []))}" for e in c["evidence"])
+    dest.write_text(
+        f"---\nname: {c['id']}\ndescription: {red(_one_line(c['title'] + '：' + c['problem'], 200))}\n"
+        f"metadata:\n  type: feedback\n  layer: {c.get('layer')}\n---\n\n{red(c['summary'])}\n\n"
+        f"**Why:** {red(c['problem'])}\n**How to apply:** {red('；'.join(c['packaging'].get('triggers') or []) or '见上文')}\n\n"
+        f"_来源：session-distiller run {rd.name}；证据 {ev}_\n", encoding="utf-8")
+    led["candidates"][args.id].update({"scaffolded_to": str(dest), "scaffolded_at": now_iso()})
+    save_ledger(led)
+    info(f"memory draft: {dest}")
+    info("Show it to the user; they choose where it goes (a project CLAUDE.md, ~/.claude/CLAUDE.md, or a memory store).")
+    return f"scaffold {args.id} -> {dest} form=memory"
 
 
 # ----------------------------------------------------------- self-update ---
@@ -1220,7 +1281,8 @@ def build_parser():
         sp.add_argument("--min-turns", type=int, help="skip sessions with fewer human turns")
         sp.add_argument("--limit", type=int, help="newest N only")
 
-    sp = sub.add_parser("init"); sp.add_argument("--force", action="store_true"); sp.set_defaults(fn=cmd_init)
+    sp = sub.add_parser("init"); sp.add_argument("--force", action="store_true")
+    sp.add_argument("--profile", help="copy a preset from assets/profiles/ (e.g. blacklake-fde)"); sp.set_defaults(fn=cmd_init)
     sub.add_parser("doctor").set_defaults(fn=cmd_doctor)
     sp = sub.add_parser("scan"); sel(sp); sp.add_argument("--json", action="store_true"); sp.set_defaults(fn=cmd_scan)
     sp = sub.add_parser("digest"); sel(sp); sp.add_argument("--run"); sp.add_argument("--max-chars", type=int)

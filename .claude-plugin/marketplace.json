@@ -6,5 +6,20 @@
   "metadata": {
     "description": "Skills 工厂产出的自定义 Claude Skills（由 tools/hub 生成，请勿手改）"
   },
-  "plugins": []
+  "plugins": [
+    {
+      "name": "session-distiller",
+      "source": "./skills/session-distiller",
+      "description": "从过去的 Agent 会话（Claude Code 本机会话记录，以 session 为单位）里挖出值得长期复用的资产，包括组件、方法论、流程、规则以及\"规则+代码\"，依据用户的长期目标画像打分、和已有 skill 去重，经用户逐条确认后固化成符合 skill-hub 规范的 skill 草稿。用户说\"复盘/盘点/沉淀/提炼最近的会话或项目\"\"把做过的东西沉淀成 skill\"\"哪些经验值得固化\"\"从历史 session 里提取可复用的东西\"\"做个资产盘点\"，或在一个项目收尾时想把可复用部分提到项目之外，都应使用本 skill，即使没有明确说 skill。",
+      "version": "0.1.0",
+      "skills": [
+        "."
+      ],
+      "keywords": [
+        "skill-engineering",
+        "knowledge-management",
+        "retrospective"
+      ]
+    }
+  ]
 }

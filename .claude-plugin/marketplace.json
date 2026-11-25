@@ -8,6 +8,20 @@
   },
   "plugins": [
     {
+      "name": "blacklake-auto-git",
+      "source": "./skills/blacklake-auto-git",
+      "description": "通过内网 Mac 上的 Git 气闸（airlock）对公司内网 GitLab 的单个仓库做 Agentic Coding：拉代码、开 deans-cc/ 分支、推送并自动建 Draft MR、读 MR 评论迭代，以及首次搭建、自检和故障自愈。用户提到 blacklake-auto-git、内网仓库/公司 GitLab、气闸、提 MR、\"拉一下最新代码\"、\"把改动推上去\"，或在开发机上改公司代码时使用。",
+      "version": "1.1.0",
+      "skills": [
+        "."
+      ],
+      "keywords": [
+        "git",
+        "gitlab",
+        "intranet"
+      ]
+    },
+    {
       "name": "skill-hub-ops",
       "source": "./skills/skill-hub-ops",
       "description": "运维 Skills 工厂的 Skill Hub：把存量 skill 导入 skill-hub 仓库、改版本、发版、发布到 SkillHub 看板、安装到本机、下架和巡检。用户说\"把这个 skill 放进 Hub / 上架 / 发布 / 升级版本 / 装到我电脑 / 下架 / 看看各端版本\"，或提到 skill-hub、SkillHub、技能看板、blacklake-skill-hub 时使用。",

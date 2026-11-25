@@ -17,6 +17,12 @@ claude plugin marketplace add D-Tony2020/skill-hub
 claude plugin install <skill-name>@blacklake-skill-hub
 ```
 
+已上架：
+
+```
+/plugin install blacklake-auto-git --marketplace D-Tony2020/skill-hub
+```
+
 claude.ai：到本仓库 Releases 下载 `<skill>-<version>.zip`，在 claude.ai → Customize → Skills 上传。
 
 ## 目录规范

@@ -10,7 +10,11 @@ DEST="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}/blacklake-auto-git"
 [ "$SRC" = "$DEST" ] && { echo "already running from $DEST; run this from the source clone instead"; exit 1; }
 mkdir -p "$(dirname "$DEST")"
 rm -rf "$DEST.tmp" && mkdir -p "$DEST.tmp"
-cp -R "$SRC/.gitattributes" "$SRC/SKILL.md" "$SRC/VERSION" "$SRC/CHANGELOG.md" "$SRC/scripts" "$SRC/references" "$SRC/evals" "$SRC/tests" "$DEST.tmp/"
+# development files (.gitattributes, evals, tests) are copied when present; release
+# packages (claude.ai zip, SkillHub) do not ship them
+for f in .gitattributes SKILL.md VERSION CHANGELOG.md scripts references evals tests; do
+  [ -e "$SRC/$f" ] && cp -R "$SRC/$f" "$DEST.tmp/"
+done
 # provenance: where this copy came from, so `bag.sh update` / `bag.sh version` know the source
 {
   echo "repo=$(git -C "$SRC" remote get-url origin 2>/dev/null || echo unknown)"
@@ -25,5 +29,5 @@ if ! { rm -rf "$DEST" 2>/dev/null && mv "$DEST.tmp" "$DEST"; }; then
   mkdir -p "$DEST" && cp -R "$DEST.tmp/." "$DEST/" && rm -rf "$DEST.tmp"
 fi
 chmod +x "$DEST/scripts/"*.sh "$DEST/scripts/mac/"* 2>/dev/null || true
-echo "installed blacklake-auto-git $(cat "$DEST/VERSION") ($(sed -n 's/^commit=//p' "$DEST/SOURCE")) -> $DEST"
+echo "installed blacklake-auto-git $(cat "$DEST/VERSION" 2>/dev/null || echo "?") ($(sed -n 's/^commit=//p' "$DEST/SOURCE")) -> $DEST"
 echo "start a NEW Claude Code session for the change to take effect"

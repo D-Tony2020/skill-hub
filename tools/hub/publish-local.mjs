@@ -52,12 +52,29 @@ function parseArgs(argv) {
   return opts;
 }
 
-function skillhub(args) {
+// Windows needs a shell for the .cmd shim, and the shell re-splits the joined
+// command line, so every argument is quoted there (paths with spaces).
+const quoteWin = (a) => (/[\s"&|<>^]/.test(a) ? `"${a.replace(/"/g, '""')}"` : a);
+const RATE_LIMITED = /429|rate.?limit|too many requests/i;
+const sleep = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+
+function skillhub(args, { retries = 3, waitMs = Number(process.env.SKILLHUB_RETRY_WAIT_MS ?? 65_000) } = {}) {
   const bin = process.env.SKILLHUB_BIN || 'skillhub';
-  // .cmd shims on Windows only run through a shell.
-  const res = spawnSync(bin, args, { encoding: 'utf8', shell: process.platform === 'win32' });
-  if (res.error) throw new Error(`cannot run ${bin}: ${res.error.message} (install with npm i -g @astron-team/skillhub or set SKILLHUB_BIN)`);
-  return { code: res.status, out: `${res.stdout ?? ''}${res.stderr ?? ''}`.trim() };
+  const win = process.platform === 'win32';
+  for (let attempt = 0; ; attempt += 1) {
+    const res = win
+      ? spawnSync([bin, ...args].map(quoteWin).join(' '), { encoding: 'utf8', shell: true })
+      : spawnSync(bin, args, { encoding: 'utf8' });
+    if (res.error) throw new Error(`cannot run ${bin}: ${res.error.message} (install with npm i -g @astron-team/skillhub or set SKILLHUB_BIN)`);
+    const out = `${res.stdout ?? ''}${res.stderr ?? ''}`.trim();
+    // SkillHub allows about 10 publish calls a minute per user; dry runs count too.
+    if (res.status !== 0 && RATE_LIMITED.test(out) && attempt < retries) {
+      console.log(`     rate limited by SkillHub, waiting ${Math.round(waitMs / 1000)}s before retry ${attempt + 1}/${retries}`);
+      sleep(waitMs);
+      continue;
+    }
+    return { code: res.status, out };
+  }
 }
 
 function readState() {
@@ -95,9 +112,13 @@ function main() {
       failed += 1;
       continue;
     }
-    if (!opts.force && done[skill.dirName]?.version === skill.version) {
-      console.log(`skip ${label}: already submitted ${done[skill.dirName].at} (use --force to resend)`);
+    const prev = done[skill.dirName];
+    if (!opts.force && prev?.version === skill.version) {
+      console.log(`skip ${label}: already submitted ${prev.at}; if it was rejected or superseded, resend with --skill ${skill.dirName} --force`);
       continue;
+    }
+    if (prev && prev.version !== skill.version) {
+      console.log(`     ${label}: ${prev.version} was submitted ${prev.at}. If it is still waiting for review, this submission replaces it in the queue.`);
     }
 
     const staged = stageForSkillHub(skill, path.join(stageRoot, skill.dirName));
@@ -123,13 +144,14 @@ function main() {
     }
     done[skill.dirName] = { version: skill.version, namespace: opts.namespace, at: new Date().toISOString() };
     fs.writeFileSync(STATE_FILE, `${JSON.stringify(state, null, 2)}\n`);
-    console.log(`ok   ${label}: submitted to ${opts.namespace}\n${pub.out}`);
+    // CLI 0.3.1 prints "Status: undefined" against server 0.2.28: the real state is on the review page.
+    console.log(`ok   ${label}: submitted to ${opts.namespace}\n${pub.out.replace(/^.*Status: undefined.*$/m, '').trim()}`);
     submitted += 1;
   }
 
   fs.rmSync(stageRoot, { recursive: true, force: true });
   if (submitted && opts.visibility !== 'private') {
-    console.log(`\n${submitted} skill(s) are waiting for review: approve them at ${opts.registry} (review queue).`);
+    console.log(`\n${submitted} skill(s) submitted. SkillHub scans them first; approve at ${opts.registry}/dashboard/reviews once the scan has finished (approving earlier fails).`);
   }
   return failed ? 1 : 0;
 }

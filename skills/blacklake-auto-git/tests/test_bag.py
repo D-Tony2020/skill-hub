@@ -160,6 +160,14 @@ class UpdateTest(unittest.TestCase):
         self.assertIn("source.commit=", p.stdout)
         self.assertIn("source.path=skills/blacklake-auto-git", p.stdout)
 
+    def test_version_falls_back_to_metadata_version(self):
+        # a copy installed from SkillHub has no VERSION file; the publisher writes metadata.version
+        os.remove(os.path.join(self.installed, "VERSION"))
+        md = os.path.join(self.installed, "SKILL.md")
+        text = open(md).read()
+        open(md, "w").write(text.replace("\n---\n", "\nmetadata:\n  version: 7.7.7\n---\n", 1))
+        self.assertIn("skill=7.7.7", self.run_bag("version").stdout)
+
     def test_update_pulls_and_reinstalls(self):
         self.assertIn("already_latest", last_line(self.run_bag("update")))
         self.publish("VERSION", "9.9.9\n", "bump")

@@ -1,0 +1,10 @@
+{
+  "name": "blacklake-skill-hub",
+  "owner": {
+    "name": "D-Tony2020"
+  },
+  "metadata": {
+    "description": "Skills 工厂产出的自定义 Claude Skills（由 tools/hub 生成，请勿手改）"
+  },
+  "plugins": []
+}

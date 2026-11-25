@@ -1,0 +1,50 @@
+name: release
+
+# On every push to main, each published skill whose version has no tag yet gets
+# a GitHub Release `<skill>@v<version>` with a zip ready for claude.ai upload.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run validate
+      - name: Package and release new versions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          node tools/hub/cli.mjs list --json > dist/skills.json
+          for row in $(jq -c '.[] | select(.status == "published")' dist/skills.json); do
+            name=$(jq -r .name <<<"$row")
+            version=$(jq -r .version <<<"$row")
+            tag="${name}@v${version}"
+            if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+              echo "skip ${tag}: already released"
+              continue
+            fi
+            zip_path="dist/${name}-${version}.zip"
+            (cd skills && node ../tools/hub/cli.mjs files "${name}" | sed "s#^#${name}/#" | zip -q -X "../${zip_path}" -@)
+            notes="Upload ${name}-${version}.zip at claude.ai → Customize → Skills. Changes: see skills/${name}/CHANGELOG.md."
+            gh release create "${tag}" "${zip_path}" --title "${tag}" --notes "${notes}" --target "${GITHUB_SHA}"
+            echo "released ${tag}"
+          done

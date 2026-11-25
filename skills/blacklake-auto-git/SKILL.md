@@ -29,14 +29,27 @@ Windows 开发机（你 + Claude Code）           内网 Mac（Dean 的电脑�
 5. 不提交密钥、token、`.env`、构建产物和大文件。
 6. 需要 Dean 在 Mac 上操作时，给他**可直接复制粘贴的一行命令**和一句原因，做完后由你复查（`bag doctor`），不让他自己判断结果。
 
+## 源码仓库与版本
+
+- **唯一源码**：<https://github.com/D-Tony2020/skill-hub>（私有仓库，Dean 的 GitHub 账号可访问），目录 `skills/blacklake-auto-git/`，分支 `main`。改 Skill 只改这里，经 PR 合并；不要直接改已安装的副本（`~/.claude/skills/blacklake-auto-git`），它会在下次更新时被覆盖。
+- 本机源码克隆默认在 `~/skill-hub`（`BAG_SRC` 可改）。已安装副本里的 `SOURCE` 文件记录了来源仓库、分支、提交号和安装时间；`bag version` 会显示这些信息，以及 Skill 版本和它附带的 Mac 端版本。
+- **自更新**：`bag update` 会拉取 `main` 的最新代码并重新安装（克隆不存在时会先克隆）。结果中：
+  - `already_latest`：已是最新，无需操作。
+  - `restart_session=yes`：新版本从**下一个会话**开始生效，本会话继续按已加载的说明工作，并告诉 Dean。
+  - `mac_upgrade_needed=yes`：Mac 端代码也有变化，按 [references/iteration.md](references/iteration.md)「升级 Mac 端」处理。
+  - `E_SRC_DOWNGRADE`：main 上的版本比已安装的旧（已安装的可能来自尚未合并的 PR 分支），保持现状即可，不算故障。
+  - 若以插件方式安装，会提示改用 `/plugin` 更新（`E_SRC_PLUGIN`）。
+- **反馈与修改**：Skill 本身的缺陷写进 `~/.blacklake-auto-git/skill-feedback.md`。如果 Dean 要求你直接修，在 `~/skill-hub` 新建分支，修改 `skills/blacklake-auto-git/` 并补测试（`bash skills/blacklake-auto-git/tests/run_all.sh`），升版本号、写 CHANGELOG，推送后开 PR，由 Dean 合并。合并后运行 `bag update`。
+
 ## 每个会话开始
 
 1. `cat ~/.blacklake-auto-git/learnings.md 2>/dev/null` 读这台机器积累的环境经验（之前踩过的坑、Dean 的偏好）。
+   然后运行 `bag update`。它很快，失败也不影响后续工作：网络或 GitHub 登录有问题时记一笔，继续往下做。
 2. `bag doctor`：
    - `RESULT ok` → 进入日常开发。
    - `E_NOT_PAIRED` 且 `~/.blacklake-auto-git/` 不存在或没有 state.env → 还没搭建，走「首次搭建」。
    - 其它错误码 → 按 troubleshooting.md 处理后再跑一次 `bag doctor`，直到 ok 或确定需要 Dean。
-3. `doctor` 里出现 `versions ... MISMATCH` → 按 [references/iteration.md](references/iteration.md)「升级 Mac 端」处理（不阻塞日常开发，但要告诉 Dean）。
+3. `doctor` 的 `versions` 一行出现 `MISMATCH`（Mac 端 airlock 版本和 Skill 附带的版本不一致）时，按 [references/iteration.md](references/iteration.md)「升级 Mac 端」处理（不阻塞日常开发，但要告诉 Dean）。
 
 ## 日常开发流程
 
@@ -97,6 +110,7 @@ Windows 开发机（你 + Claude Code）           内网 Mac（Dean 的电脑�
 | `bag status` / `bag log [n]` / `bag version` | 配置与健康 / Mac 侧事件 / 双端版本 |
 | `bag init` / `bundle` / `serve-bundle` / `pair` / `clone` | 首次搭建 |
 | `bag learn "<...>"` | 记录环境经验 |
+| `bag update` | 从源码仓库更新本 Skill 并重装 |
 
 ## 参考文档
 

@@ -7,8 +7,9 @@ echo "== lint"
 if command -v shellcheck >/dev/null; then shellcheck -S warning scripts/bag.sh scripts/mac/install.sh || rc=1; else echo "shellcheck not installed, skipped"; fi
 bash -n scripts/mac/install.sh || rc=1
 python3 -c "import ast;ast.parse(open('scripts/mac/airlock.py').read())" || rc=1
-v="$(cat VERSION)"
-grep -q "^VERSION = \"$v\"" scripts/mac/airlock.py || { echo "VERSION mismatch: airlock.py vs VERSION ($v)"; rc=1; }
+grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$' VERSION || { echo "VERSION is not semver"; rc=1; }
+grep -qE '^VERSION = "[0-9]+\.[0-9]+\.[0-9]+"$' scripts/mac/airlock.py || { echo "airlock.py VERSION missing"; rc=1; }
+grep -q "^## $(cat VERSION) " CHANGELOG.md || { echo "CHANGELOG.md has no entry for $(cat VERSION)"; rc=1; }
 echo "== unit/e2e (simulated)"
 python3 -W ignore -m unittest tests.test_airlock tests.test_bag || rc=1
 echo "== real sshd (needs root + openssh-server; skipped otherwise)"

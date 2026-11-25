@@ -4,11 +4,18 @@
 //   node tools/hub/cli.mjs build [--check]     write .claude-plugin/marketplace.json (or fail if stale)
 //   node tools/hub/cli.mjs list [--json]       show skills with status and version
 //   node tools/hub/cli.mjs files <skill>       list files that go into the release package
+//   node tools/hub/cli.mjs import <dir> [--name n] [--version x.y.z] [--force]   bring an existing skill in as a draft
+//   node tools/hub/cli.mjs bump <skill> <major|minor|patch|x.y.z> [-m note]     raise the version, open a CHANGELOG entry
+//   node tools/hub/cli.mjs install <skill> [--dest dir] [--force]               copy the release files into ~/.claude/skills
+//   node tools/hub/cli.mjs status [--dest dir] [--json]                         repo vs installed versions, missing requirements
 import fs from 'node:fs';
+import os from 'node:os';
+import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   loadSkills, validateSkill, buildMarketplace, serializeMarketplace, packageFiles,
+  importSkill, bumpSkill, installSkill, readInstalled,
 } from './lib.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -73,15 +80,96 @@ function files(name) {
   return 0;
 }
 
+function flag(name) {
+  const i = args.indexOf(name);
+  return i === -1 ? undefined : args[i + 1];
+}
+const DEFAULT_DEST = path.join(os.homedir(), '.claude', 'skills');
+
+function gitCommit() {
+  const r = spawnSync('git', ['-C', ROOT, 'rev-parse', '--short', 'HEAD'], { encoding: 'utf8' });
+  return r.status === 0 ? r.stdout.trim() : null;
+}
+
+function onPath(cmd) {
+  const probe = process.platform === 'win32' ? ['where', [cmd]] : ['sh', ['-c', `command -v "${cmd}"`]];
+  return spawnSync(probe[0], probe[1], { stdio: 'ignore' }).status === 0;
+}
+
+function requirementGaps(skill, dest) {
+  const installed = new Set(readInstalled(dest).map((s) => s.name));
+  return [
+    ...skill.requires.skills.filter((s) => !installed.has(s)).map((s) => `skill ${s} not installed in ${dest}`),
+    ...skill.requires.commands.filter((c) => !onPath(c)).map((c) => `command ${c} not on PATH`),
+    ...skill.requires.env.filter((e) => !process.env[e]).map((e) => `env ${e} not set`),
+  ];
+}
+
+function importCmd(src) {
+  if (!src) { console.error('usage: import <dir> [--name n] [--version x.y.z] [--force]'); return 2; }
+  const r = importSkill(ROOT, path.resolve(src), { name: flag('--name'), version: flag('--version'), force: args.includes('--force') });
+  console.log(`imported ${r.name} v${r.version} as draft -> ${path.relative(ROOT, r.dir)} (${r.files.length} files)`);
+  for (const e of r.errors) console.log(`     error: ${e}`);
+  for (const w of r.warnings) console.log(`     warn:  ${w}`);
+  if (r.onlySkillMd) console.log('     warn:  only SKILL.md came across; if it references scripts/ or references/, the source was incomplete (claude.ai synced copies hold SKILL.md only)');
+  console.log('next: fix errors, declare requires in hub.yaml, then set status: published and open a PR');
+  return r.errors.length ? 1 : 0;
+}
+
+function bumpCmd(name, part) {
+  const skill = loadSkills(ROOT).find((s) => s.dirName === name);
+  if (!skill || !part) { console.error('usage: bump <skill> <major|minor|patch|x.y.z> [-m note]'); return 2; }
+  const next = bumpSkill(skill, part, flag('-m'));
+  console.log(`${name}: ${skill.version} -> ${next} (CHANGELOG entry added; edit it before committing)`);
+  return 0;
+}
+
+function installCmd(name) {
+  const dest = flag('--dest') ?? DEFAULT_DEST;
+  const skill = loadSkills(ROOT).find((s) => s.dirName === name);
+  if (!skill) { console.error(`no skill folder named ${name}`); return 1; }
+  const { errors } = validateSkill(skill);
+  if (errors.length) { console.error(`refusing to install ${name}: ${errors.join('; ')}`); return 1; }
+  const to = installSkill(skill, dest, { force: args.includes('--force'), commit: gitCommit() });
+  console.log(`installed ${name} v${skill.version} -> ${to} (start a new Claude session to load it)`);
+  for (const g of requirementGaps(skill, dest)) console.log(`     missing: ${g}`);
+  return 0;
+}
+
+function statusCmd(json) {
+  const dest = flag('--dest') ?? DEFAULT_DEST;
+  const installed = new Map(readInstalled(dest).map((s) => [s.name, s]));
+  const rows = loadSkills(ROOT).map((s) => {
+    const inst = installed.get(s.dirName);
+    let state = 'not installed';
+    if (inst && !inst.managed) state = 'installed by hand';
+    else if (inst && inst.version === s.version) state = 'up to date';
+    else if (inst) state = `outdated (${inst.version})`;
+    return { name: s.dirName, status: s.status, version: s.version ?? '', installed: state, missing: inst ? requirementGaps(s, dest) : [] };
+  });
+  if (json) console.log(JSON.stringify(rows, null, 2));
+  else for (const r of rows) console.log(`${r.name.padEnd(28)} ${r.status.padEnd(10)} ${r.version.padEnd(9)} ${r.installed}${r.missing.length ? `  missing: ${r.missing.join('; ')}` : ''}`);
+  return 0;
+}
+
 const handlers = {
   validate: () => validate(),
   build: () => build(args.includes('--check')),
   list: () => list(args.includes('--json')),
   files: () => files(args[0]),
+  import: () => importCmd(args[0]),
+  bump: () => bumpCmd(args[0], args[1]),
+  install: () => installCmd(args[0]),
+  status: () => statusCmd(args.includes('--json')),
 };
 
 if (!handlers[command]) {
-  console.error('usage: cli.mjs <validate|build [--check]|list [--json]|files <skill>>');
+  console.error('usage: cli.mjs <validate|build [--check]|list [--json]|files <skill>|import <dir>|bump <skill> <part>|install <skill>|status>');
   process.exit(2);
 }
-process.exit(handlers[command]());
+try {
+  process.exit(handlers[command]());
+} catch (err) {
+  console.error(err.message);
+  process.exit(1);
+}

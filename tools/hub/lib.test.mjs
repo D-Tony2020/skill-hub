@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { loadSkills, validateSkill, buildMarketplace, packageFiles, parseFrontmatter } from './lib.mjs';
+import {
+  loadSkills, validateSkill, buildMarketplace, packageFiles, parseFrontmatter, stageForSkillHub, withMetadataVersion,
+  findHardcodedPaths, findMissingReferences, importSkill, bumpSkill, nextVersion, installSkill, readInstalled,
+} from './lib.mjs';
 
 function makeRepo(skills) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hub-'));
@@ -109,4 +112,110 @@ test('package files leave out tests, evals, hub.yaml and caches', () => {
     },
   });
   assert.deepEqual(packageFiles(loadSkills(root)[0]), ['SKILL.md', 'scripts/run.sh']);
+});
+
+test('SkillHub staging drops extensionless files and writes metadata.version', () => {
+  const root = makeRepo({
+    hubpkg: {
+      'SKILL.md': '---\nname: hubpkg\ndescription: Does it.\nmetadata:\n  author: dean\n---\n\n# body\n',
+      VERSION: '1.4.0\n', 'hub.yaml': 'status: published\n', 'scripts/run.sh': 'echo\n', 'scripts/Makefile': 'x\n',
+    },
+  });
+  const [skill] = loadSkills(root);
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'stage-'));
+  const staged = stageForSkillHub(skill, path.join(out, 'hubpkg'));
+  assert.deepEqual(staged.files, ['SKILL.md', 'scripts/run.sh']);
+  assert.deepEqual(staged.dropped, ['VERSION', 'scripts/Makefile']);
+  const fm = parseFrontmatter(fs.readFileSync(path.join(staged.dir, 'SKILL.md'), 'utf8')).data;
+  assert.deepEqual(fm.metadata, { author: 'dean', version: '1.4.0' });
+  assert.equal(fm.name, 'hubpkg');
+  assert.match(fs.readFileSync(path.join(staged.dir, 'SKILL.md'), 'utf8'), /\n# body\n$/);
+  // the source SKILL.md is untouched
+  assert.doesNotMatch(fs.readFileSync(path.join(skill.dir, 'SKILL.md'), 'utf8'), /version/);
+});
+
+test('withMetadataVersion keeps CRLF/BOM input parseable and adds metadata when absent', () => {
+  const out = withMetadataVersion('﻿---\r\nname: a\r\ndescription: b\r\n---\r\nbody', '2.0.0');
+  assert.deepEqual(parseFrontmatter(out).data, { name: 'a', description: 'b', metadata: { version: '2.0.0' } });
+});
+
+test('hardcoded install paths and missing referenced files are reported', () => {
+  const root = makeRepo({
+    paths: {
+      'SKILL.md': '---\nname: paths\ndescription: Uses scripts.\n---\nRun `py -3 "$env:USERPROFILE\\.claude\\skills\\paths\\scripts\\run.py"` or ~/.claude/skills/paths/scripts/run.py.\nSee references/guide.md and scripts/run.py.\n',
+      'scripts/run.py': 'print(1)\n',
+    },
+  });
+  const skill = loadSkills(root)[0];
+  const hits = findHardcodedPaths(skill).map((h) => h.text);
+  assert.deepEqual(hits, ['$env:USERPROFILE\\.claude\\skills\\paths', '~/.claude/skills/paths']);
+  assert.deepEqual(findMissingReferences(skill), ['references/guide.md']);
+  const { errors, warnings } = validateSkill(skill);
+  assert.deepEqual(errors, []);
+  assert.match(warnings.join('\n'), /hardcodes an install path/);
+  assert.match(warnings.join('\n'), /references\/guide\.md/);
+});
+
+test('requires must be a mapping of lists', () => {
+  const root = makeRepo({
+    good: { 'SKILL.md': md('good'), 'hub.yaml': 'status: draft\nrequires:\n  skills: [drawio-skill]\n  commands: [py]\n' },
+    bad: { 'SKILL.md': md('bad'), 'hub.yaml': 'status: draft\nrequires:\n  skills: drawio-skill\n  tools: [x]\n' },
+  });
+  const [bad, good] = loadSkills(root);
+  assert.deepEqual(good.requires, { skills: ['drawio-skill'], commands: ['py'], env: [] });
+  assert.deepEqual(validateSkill(good).errors, []);
+  assert.match(validateSkill(bad).errors.join('\n'), /requires\.skills must be a list/);
+  assert.match(validateSkill(bad).warnings.join('\n'), /requires\.tools is not recognised/);
+});
+
+test('import brings a folder in as a draft, drops plugin.json and keeps VERSION', () => {
+  const root = makeRepo({});
+  const src = fs.mkdtempSync(path.join(os.tmpdir(), 'src-'));
+  fs.writeFileSync(path.join(src, 'SKILL.md'), md('ported'));
+  fs.mkdirSync(path.join(src, '.claude-plugin'));
+  fs.writeFileSync(path.join(src, '.claude-plugin', 'plugin.json'), '{"name":"ported","version":"2.3.0"}');
+  fs.mkdirSync(path.join(src, 'scripts', '__pycache__'), { recursive: true });
+  fs.writeFileSync(path.join(src, 'scripts', 'a.py'), '');
+  fs.writeFileSync(path.join(src, 'scripts', '__pycache__', 'a.pyc'), '');
+  const r = importSkill(root, src);
+  assert.equal(r.name, 'ported');
+  assert.equal(r.version, '2.3.0');
+  assert.deepEqual(r.files, ['SKILL.md', 'scripts/a.py']);
+  assert.equal(fs.existsSync(path.join(root, 'skills', 'ported', '.claude-plugin')), false);
+  assert.equal(loadSkills(root)[0].status, 'draft');
+  assert.throws(() => importSkill(root, src), /already exists/);
+  assert.equal(r.onlySkillMd, false);
+});
+
+test('bump raises VERSION and hub.yaml consistently and opens a changelog entry', () => {
+  const root = makeRepo({
+    withfile: { 'SKILL.md': md('withfile'), VERSION: '1.2.3\n', 'hub.yaml': 'status: published\n', 'CHANGELOG.md': '# Changelog\n\n## 1.2.3 - 2026-01-01\n\n- old\n' },
+    inhub: { 'SKILL.md': md('inhub'), 'hub.yaml': 'status: draft # keep\nversion: 0.1.0\n' },
+  });
+  const [inhub, withfile] = loadSkills(root);
+  assert.equal(bumpSkill(withfile, 'minor', 'new thing', '2026-11-25'), '1.3.0');
+  assert.equal(fs.readFileSync(path.join(withfile.dir, 'VERSION'), 'utf8'), '1.3.0\n');
+  assert.doesNotMatch(fs.readFileSync(path.join(withfile.dir, 'hub.yaml'), 'utf8'), /version/);
+  assert.match(fs.readFileSync(path.join(withfile.dir, 'CHANGELOG.md'), 'utf8'), /# Changelog\n\n## 1\.3\.0 - 2026-11-25\n\n- new thing\n\n## 1\.2\.3/);
+  assert.equal(bumpSkill(inhub, 'major', null, '2026-11-25'), '1.0.0');
+  const hubText = fs.readFileSync(path.join(inhub.dir, 'hub.yaml'), 'utf8');
+  assert.match(hubText, /version: 1\.0\.0/);
+  assert.match(hubText, /# keep/);
+  assert.throws(() => nextVersion('1.0.0', 'huge'), /bump takes/);
+  assert.equal(nextVersion('1.0.0', '3.1.4'), '3.1.4');
+});
+
+test('install copies release files, marks the copy, and protects hand-made folders', () => {
+  const root = makeRepo({ inst: { 'SKILL.md': md('inst'), 'hub.yaml': 'status: published\nversion: 1.0.0\n', 'tests/t.py': '', 'scripts/r.sh': '' } });
+  const dest = fs.mkdtempSync(path.join(os.tmpdir(), 'dest-'));
+  const skill = loadSkills(root)[0];
+  installSkill(skill, dest, { commit: 'abc123' });
+  assert.deepEqual(fs.readdirSync(path.join(dest, 'inst')).sort(), ['.hub-source.json', 'SKILL.md', 'scripts']);
+  assert.deepEqual(readInstalled(dest), [{ name: 'inst', managed: true, version: '1.0.0' }]);
+  installSkill(skill, dest); // reinstall over our own copy is fine
+  fs.mkdirSync(path.join(dest, 'other'));
+  fs.writeFileSync(path.join(dest, 'other', 'SKILL.md'), md('other'));
+  const other = { ...skill, dirName: 'other' };
+  assert.throws(() => installSkill(other, dest), /not installed by skill-hub/);
+  assert.equal(readInstalled(dest).find((s) => s.name === 'other').managed, false);
 });

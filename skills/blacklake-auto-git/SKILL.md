@@ -78,8 +78,8 @@ Windows 开发机（你 + Claude Code）           内网 Mac（Dean 的电脑�
 
 1. 问 Dean 要两样东西：GitLab 项目的 **HTTPS 克隆地址**（项目页 → Clone → Clone with HTTPS）；确认分支前缀 `deans-cc/` 和目标分支 `main`（默认值，除非他另说）。
 2. `bag init` → `bag bundle --gitlab-url <地址>`，生成 Mac 安装器（单个自包含 .sh 文件）。
-3. 把安装器给到 Mac：优先 `bag serve-bundle`（**后台运行**，把它打印的 `curl ...` 那一行发给 Dean 在 Mac 终端执行）；不行就让 Dean 用微信/AirDrop/U 盘拷过去。
-4. 告诉 Dean 在 Mac 上：连好公司 VPN → 在 GitLab 建 Project Access Token（runbook 有逐步说明）→ `sudo bash blacklake-airlock-installer.sh` → 粘贴 token → 把最后打印的 `BAG-PAIR ...` 那一整行发回来。
+3. 把安装器给到 Mac：优先 `bag serve-bundle`（**后台运行**，把它打印的 `curl ...` 那一行**原样**发给 Dean 在 Mac 终端执行；这一行会先核对 sha256，不要删掉核对部分）；不行就让 Dean 用微信/AirDrop/U 盘拷过去。
+4. 告诉 Dean 在 Mac 上：连好公司 VPN → 在 GitLab 建 Project Access Token（runbook 有逐步说明）→ 执行安装命令（直传用 serve-bundle 给的那一行；手动传用 `bag bundle` 打印的 "On the Mac run" 那一行，都先核对 sha256 再 `sudo bash`）→ 粘贴 token → 把最后打印的 `BAG-PAIR ...` 那一整行发回来。
 5. `bag pair "<BAG-PAIR 行>"` → `bag doctor` → `bag clone`。
 6. 记录环境：`bag learn "首次搭建完成：Mac=<host>，GitLab=<地址>，<任何特别情况>"`。
 7. 问 Dean 是否做一次冒烟推送（会在 GitLab 建一个他可以直接关掉的 Draft MR）。

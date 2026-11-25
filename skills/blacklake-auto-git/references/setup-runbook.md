@@ -29,11 +29,11 @@ bag bundle --gitlab-url "https://gitlab.xxx.com/组/项目.git"   # 可选 --pre
 
 ## 3. 传到 Mac（任选其一）
 
-**A. 热点直传（推荐）**：后台运行 `bag serve-bundle`（默认端口 8765，只服务一次，路径带随机串）。它会打印若干行 `curl -fsSLo blacklake-airlock-installer.sh http://<IP>:8765/<随机串> && sudo bash blacklake-airlock-installer.sh`。把**和热点同网段**的那一行发给 Dean（手机热点常见网段：iPhone `172.20.10.x`，安卓 `192.168.43.x` 等）。Windows 防火墙弹窗时请 Dean 选"允许（专用网络）"。
+**A. 热点直传（推荐）**：后台运行 `bag serve-bundle`（默认端口 8765，只服务一次，路径带随机串）。它会打印若干行 `curl -fsSLo blacklake-airlock-installer.sh http://<IP>:8765/<随机串> && echo "<sha256>  blacklake-airlock-installer.sh" | shasum -a 256 -c - && sudo bash blacklake-airlock-installer.sh`：先核对 sha256，下载内容被改过就不会执行。把**和热点同网段**的那一行发给 Dean（手机热点常见网段：iPhone `172.20.10.x`，安卓 `192.168.43.x` 等）。Windows 防火墙弹窗时请 Dean 选"允许（专用网络）"。
 
 **B. 手动**：把安装器文件通过微信文件传输助手 / AirDrop（经手机）/ U 盘给 Dean，放到 Mac 的「下载」目录。
 
-传完后让 Dean 在 Mac 上执行 `shasum -a 256 ~/Downloads/blacklake-airlock-installer.sh`，与你的 sha256 对比（直传方式可省略）。
+手动传的，让 Dean 在 Mac 上执行 `bag bundle` 打印的 "On the Mac run" 那一行（先 `cd ~/Downloads`）：它先核对 sha256，一致才 sudo 执行。热点直传那一行已内置核对。**任何方式都不要让 Dean 跳过核对直接 `sudo bash`。**
 
 ## 4. Dean 在 Mac 上操作（发给他的原话模板）
 

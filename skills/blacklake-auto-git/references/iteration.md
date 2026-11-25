@@ -39,7 +39,7 @@
 
 **升级 Mac 端**（只在 `airlock.py` 或 `install.sh` 有变化时需要）：
 1. Agent：`bag bundle --gitlab-url <原地址>`（地址见 `bag status`）。
-2. 传到 Mac（`bag serve-bundle` 或手动），Dean：`sudo bash blacklake-airlock-installer.sh`。安装器幂等：保留 airlock 用户、令牌、气闸仓库和已授权密钥，只更新代码与配置。
+2. 传到 Mac（`bag serve-bundle` 或手动），Dean 执行 Agent 给的那一行（先核对 sha256 再 `sudo bash blacklake-airlock-installer.sh`）。安装器幂等：保留 airlock 用户、令牌、气闸仓库和已授权密钥，只更新代码与配置。
 3. Agent：`bag doctor`，确认 `versions` 一致。
 
 ## 4. 反馈闭环（Skill 如何越用越好）

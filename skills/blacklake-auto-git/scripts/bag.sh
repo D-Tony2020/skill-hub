@@ -183,7 +183,7 @@ cmd_bundle() {  # bundle --gitlab-url URL [--prefix P] [--target T] [--out DIR]
   info "installer: $f"
   info "sha256:    $sum"
   info "Transfer it to the Mac (any of): bag.sh serve-bundle (same hotspot) | AirDrop/WeChat/USB."
-  info "On the Mac run:  sudo bash blacklake-airlock-installer.sh"
+  info "On the Mac run:  echo \"$sum  blacklake-airlock-installer.sh\" | shasum -a 256 -c - && sudo bash blacklake-airlock-installer.sh"
   ok "bundle path=$f sha256=$sum"
 }
 
@@ -191,10 +191,13 @@ cmd_serve_bundle() {  # one-shot HTTP server on the hotspot so the Mac can curl 
   local port="${1:-8765}" f="$BAG_HOME/bundle/blacklake-airlock-installer.sh"
   [ -f "$f" ] || fail E_USAGE "run bag.sh bundle first"
   local tok; tok="$(LC_ALL=C tr -dc 'a-z0-9' </dev/urandom | head -c 12)"
-  info "On the Mac (same hotspot), run ONE of:"
+  # Plain HTTP on a shared hotspot: the Mac must check the hash before running anything as root.
+  local sum; sum="$( (sha256sum "$f" 2>/dev/null || shasum -a 256 "$f") | awk '{print $1}')"
+  echo "$sum" | grep -qE '^[0-9a-f]{64}$' || fail E_SERVE "cannot compute sha256 of the installer"
+  info "On the Mac (same hotspot), run ONE of (it refuses to run if the download was altered):"
   local ip
   for ip in $(local_ipv4s); do
-    info "  curl -fsSLo blacklake-airlock-installer.sh http://$ip:$port/$tok && sudo bash blacklake-airlock-installer.sh"
+    info "  curl -fsSLo blacklake-airlock-installer.sh http://$ip:$port/$tok && echo \"$sum  blacklake-airlock-installer.sh\" | shasum -a 256 -c - && sudo bash blacklake-airlock-installer.sh"
   done
   info "Serving once (Ctrl+C to stop). Windows may ask to allow network access: allow on Private networks."
   if have powershell.exe; then

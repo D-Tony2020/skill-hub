@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.2 - 2026-11-25
+
+- 安全修复：`serve-bundle` 和 `bundle` 给 Mac 的安装命令先用 `shasum -a 256 -c` 核对安装器，一致才 `sudo bash`。此前经热点明文 HTTP 下载后直接以 root 执行，同网段可篡改（SkillHub 安全扫描 CRITICAL）
+
 ## 1.1.1 - 2026-11-25
 
 - 从 SkillHub 安装的副本没有 VERSION 文件时，bag.sh 改读 SKILL.md 的 metadata.version，不再误判为 0.0.0；install_local.sh 只复制存在的文件

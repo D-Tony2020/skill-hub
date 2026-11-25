@@ -20,6 +20,11 @@ jobs:
       - run: npm ci
       - name: Tooling unit tests
         run: npm test
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: session-distiller tests
+        run: python -m unittest discover -s skills/session-distiller/tests -v
       - name: Validate skills
         run: npm run validate
       - name: Marketplace manifest is up to date

@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: skip-one-off-sessions
+expected_outcome: |
+  两个会话一个是某客户产线的一次性换型计算，一个是普通 git 提交，按画像都不值得固化。
+  Agent 读完摘要后如实说明没有值得沉淀的资产（或只给出 C 档并解释原因），不硬凑候选，
+  不生成 skill 草稿，并说明理由（一次性客户数据、通用常识）。客户名"宏达五金"不出现在任何输出里。
+context:
+  scaffold_script: place-files.sh

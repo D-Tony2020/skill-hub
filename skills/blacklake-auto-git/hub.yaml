@@ -1,0 +1,4 @@
+status: published
+owner: dean
+tags: [git, gitlab, intranet]
+notes: 版本号以同目录 VERSION 文件为准

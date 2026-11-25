@@ -26,12 +26,16 @@
 
 ## 3. 版本与升级
 
-- 版本号在 `VERSION`（语义化版本），`airlock.py` 的 `VERSION` 常量必须一致；发版时同时改 `CHANGELOG.md`。
-- `bag doctor` 会比较 Skill 版本与 Mac 端 `airlock.py` 版本，不一致显示 `MISMATCH`。
+- 源码仓库：<https://github.com/D-Tony2020/skill-hub>，目录 `skills/blacklake-auto-git/`，`main` 分支是事实来源；改动都走 PR。
+- 两个版本号相互独立：
+  - **Skill 版本**写在 `VERSION`（语义化版本），任何改动都要升，并在 `CHANGELOG.md` 加对应条目（`run_all.sh` 会检查）。
+  - **Mac 端版本**是 `scripts/mac/airlock.py` 里的 `VERSION` 常量，只在 `airlock.py` 或 `install.sh` 改动时才升。
+- `bag doctor` 会比较 Mac 上实际运行的 airlock 版本和当前 Skill 附带的版本，不一致时显示 `MISMATCH`。只改了 Windows 端的版本不会要求 Dean 重装 Mac 端。
+- 已安装副本里的 `SOURCE` 文件记录来源仓库、分支、提交号和安装时间，可以用 `bag version` 查看。
 
 **升级 Windows 端（Skill 本身）**：
-- 插件方式：`/plugin marketplace update skill-hub` 然后 `/plugin update blacklake-auto-git@skill-hub`（或 `/plugin` 界面里更新）。
-- 个人 skill 方式：在 skill-hub 克隆里 `git pull`，再运行 `tools/install-skill.sh blacklake-auto-git`。
+- 个人 skill 方式（当前方式）：`bag update`。它会 fetch 并快进 `~/skill-hub` 的 main 分支，然后执行 `skills/blacklake-auto-git/scripts/install_local.sh`，同时刷新 `SOURCE`。每个会话开始时 Agent 会自动跑一次。
+- 插件方式（Skill Hub 上架后）：`/plugin marketplace update blacklake-skill-hub`，再 `/plugin update blacklake-auto-git@blacklake-skill-hub`。
 
 **升级 Mac 端**（只在 `airlock.py` 或 `install.sh` 有变化时需要）：
 1. Agent：`bag bundle --gitlab-url <原地址>`（地址见 `bag status`）。
@@ -65,7 +69,7 @@
 
 - [ ] `bash tests/run_all.sh` 全绿（含真实 SSH 与安装器模拟层，在 CI 容器里）
 - [ ] `shellcheck -S warning scripts/bag.sh scripts/mac/install.sh` 无告警
-- [ ] `VERSION`、`airlock.py VERSION`、`plugin.json version`、`CHANGELOG.md` 一致
+- [ ] `VERSION` 已升级，`CHANGELOG.md` 有对应条目；若改了 Mac 端代码，同时升级 `airlock.py` 的 `VERSION`
 - [ ] SKILL.md 正文 < 500 行，description 覆盖触发词
 - [ ] 新增错误码已写进 troubleshooting.md
 - [ ] 安全类 evals 全部通过

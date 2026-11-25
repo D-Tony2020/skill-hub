@@ -13,6 +13,13 @@ set -uo pipefail
 
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BAG_VERSION="$(cat "$SKILL_DIR/VERSION" 2>/dev/null || echo 0.0.0)"
+# Source of truth for this skill (private repo; Dean's GitHub account has access)
+SOURCE_REPO="${BAG_SRC_URL:-https://github.com/D-Tony2020/skill-hub}"
+SOURCE_PATH="skills/blacklake-auto-git"
+SOURCE_BRANCH="${BAG_SRC_BRANCH:-main}"
+SOURCE_CLONE="${BAG_SRC:-$HOME/skill-hub}"
+# Version of the Mac-side code shipped with this skill (independent of the skill version)
+AIRLOCK_EXPECTED="$(sed -n 's/^VERSION = "\([^"]*\)".*$/\1/p' "$SKILL_DIR/scripts/mac/airlock.py" 2>/dev/null)"
 BAG_HOME="${BAG_HOME:-$HOME/.blacklake-auto-git}"
 STATE="$BAG_HOME/state.env"
 SSHCFG="$BAG_HOME/ssh_config"
@@ -151,7 +158,7 @@ cmd_bundle() {  # bundle --gitlab-url URL [--prefix P] [--target T] [--out DIR]
   case "$url$prefix$target$pub" in *'"'*|*'$'*|*'`'*|*'\\'*) fail E_USAGE "illegal character in url/prefix/target/key";; esac
   echo "$prefix$target" | grep -qE '^[A-Za-z0-9._/-]+$' || fail E_USAGE "prefix/target may only contain A-Z a-z 0-9 . _ / -"
   # literal placeholder replacement (awk gsub would treat & and \ specially)
-  BAG_V="$BAG_VERSION" BAG_U="$url" BAG_P="$prefix" BAG_T="$target" BAG_K="$pub" awk '
+  BAG_V="$AIRLOCK_EXPECTED" BAG_U="$url" BAG_P="$prefix" BAG_T="$target" BAG_K="$pub" awk '
     function rep(line, ph, val,   i, out) {
       out = ""
       while ((i = index(line, ph)) > 0) { out = out substr(line, 1, i - 1) val; line = substr(line, i + length(ph)) }
@@ -162,7 +169,7 @@ cmd_bundle() {  # bundle --gitlab-url URL [--prefix P] [--target T] [--out DIR]
       $0 = rep($0, "__BAG_PUBKEY__", ENVIRON["BAG_K"]); print }' "$SKILL_DIR/scripts/mac/install.sh" | tr -d '\r' > "$f"
   {
     echo ""
-    echo "# ---- payload: airlock.py (blacklake-auto-git $BAG_VERSION) ----"
+    echo "# ---- payload: airlock.py $AIRLOCK_EXPECTED (blacklake-auto-git skill $BAG_VERSION) ----"
     echo ": <<'__AIRLOCK_PY_END__'"   # keeps 'bash -n' happy; never executed (exit above)
     echo "__AIRLOCK_PY_BEGIN__"
     tr -d '\r' < "$SKILL_DIR/scripts/mac/airlock.py"   # CRLF from a Windows checkout would break the Mac
@@ -303,7 +310,7 @@ cmd_doctor() {
     local kvs mv
     kvs="$(gate status --kv 2>/dev/null)"
     mv="$(echo "$kvs" | sed -n 's/^version=//p')"
-    printf 'CHECK %-22s %s\n' versions "skill=$BAG_VERSION airlock=${mv:-?}$( [ "$mv" != "$BAG_VERSION" ] && echo ' (MISMATCH: rebuild bundle, Dean re-runs installer)')"
+    printf 'CHECK %-22s %s\n' versions "skill=$BAG_VERSION airlock=${mv:-?} expected_airlock=$AIRLOCK_EXPECTED$( [ "$mv" != "$AIRLOCK_EXPECTED" ] && echo ' (MISMATCH: upgrade the Mac side, see references/iteration.md)')"
     local probs; probs="$(echo "$kvs" | sed -n 's/^problem=//p')"
     if [ -z "$probs" ]; then printf 'CHECK %-22s OK\n' mac.gitlab
     else
@@ -463,10 +470,44 @@ cmd_learn() {  # learn "<what happened> -> <what fixed it>"
 }
 
 cmd_version() {
-  echo "skill=$BAG_VERSION"
+  echo "skill=$BAG_VERSION expected_airlock=$AIRLOCK_EXPECTED"
+  echo "installed_at=$SKILL_DIR"
+  if [ -f "$SKILL_DIR/SOURCE" ]; then sed 's/^/source./' "$SKILL_DIR/SOURCE"
+  else echo "source.repo=$SOURCE_REPO (path $SOURCE_PATH, branch $SOURCE_BRANCH; this copy has no SOURCE record)"; fi
   load_state
   if [ -f "$SSHCFG" ] || [ -n "${BAG_SSH:-}" ]; then echo "airlock=$(gate version 2>/dev/null || echo unreachable)"; fi
   ok "version"
+}
+
+cmd_update() {  # update the skill itself from its source repo, then reinstall
+  case "$SKILL_DIR" in */.claude/plugins/*)
+    fail E_SRC_PLUGIN "installed as a plugin: ask Dean to run /plugin marketplace update blacklake-skill-hub, then /plugin update blacklake-auto-git";;
+  esac
+  have git || fail E_LOCAL_NO_GIT "git not found"
+  local src="$SOURCE_CLONE" old_commit new_commit old_air
+  old_commit="$(sed -n 's/^commit=//p' "$SKILL_DIR/SOURCE" 2>/dev/null)"
+  old_air="$AIRLOCK_EXPECTED"
+  if [ ! -d "$src/.git" ]; then
+    info "cloning $SOURCE_REPO -> $src"
+    git clone -q -b "$SOURCE_BRANCH" "$SOURCE_REPO" "$src" || fail E_SRC_CLONE "cannot clone $SOURCE_REPO (private repo: Git needs Dean's GitHub login; run 'git clone $SOURCE_REPO ~/skill-hub' once interactively)"
+  else
+    [ -z "$(git -C "$src" status --porcelain -- "$SOURCE_PATH")" ] || fail E_SRC_DIRTY "local edits in $src/$SOURCE_PATH; commit them on a branch (and open a PR) or discard them first"
+    git -C "$src" fetch -q origin "$SOURCE_BRANCH" || fail E_SRC_FETCH "cannot fetch $SOURCE_REPO (network / GitHub login)"
+    git -C "$src" checkout -q "$SOURCE_BRANCH" 2>/dev/null || git -C "$src" checkout -q -b "$SOURCE_BRANCH" "origin/$SOURCE_BRANCH" || fail E_SRC_FETCH "cannot switch to $SOURCE_BRANCH"
+    git -C "$src" merge -q --ff-only "origin/$SOURCE_BRANCH" || fail E_SRC_DIVERGED "$src/$SOURCE_BRANCH has local commits; push them as a PR or reset to origin/$SOURCE_BRANCH"
+  fi
+  [ -f "$src/$SOURCE_PATH/scripts/install_local.sh" ] || fail E_SRC_LAYOUT "$src/$SOURCE_PATH not found in the source repo"
+  new_commit="$(git -C "$src" rev-parse --short HEAD)"
+  local new_ver new_air
+  new_ver="$(cat "$src/$SOURCE_PATH/VERSION")"
+  new_air="$(sed -n 's/^VERSION = "\([^"]*\)".*$/\1/p' "$src/$SOURCE_PATH/scripts/mac/airlock.py")"
+  if [ -n "$old_commit" ] && [ "$old_commit" = "$new_commit" ]; then ok "update already_latest version=$new_ver commit=$new_commit"; fi
+  CLAUDE_SKILLS_DIR="$(dirname "$SKILL_DIR")" bash "$src/$SOURCE_PATH/scripts/install_local.sh" || fail E_SRC_INSTALL "install_local.sh failed"
+  info "changes: $(git -C "$src" log --oneline "${old_commit:-HEAD~1}..HEAD" -- "$SOURCE_PATH" 2>/dev/null | head -10 | tr '\n' ';')"
+  hist update "$BAG_VERSION -> $new_ver ($new_commit)"
+  local air_note=""
+  [ "$old_air" != "$new_air" ] && air_note=" mac_upgrade_needed=yes (airlock $old_air -> $new_air: see references/iteration.md)"
+  ok "update version=$BAG_VERSION->$new_ver commit=${old_commit:-?}->$new_commit restart_session=yes$air_note"
 }
 
 usage() {
@@ -490,6 +531,8 @@ Health & learning
   doctor                               layered self-check with fix codes
   status | log [n] | version
   learn "<symptom> -> <cause> -> <fix>" record a new environment fact
+Skill maintenance (source: $SOURCE_REPO, $SOURCE_PATH)
+  update                               pull the latest skill from its repo and reinstall
 EOF
 }
 
@@ -500,6 +543,7 @@ main() {
     pair) cmd_pair "$@";; clone) cmd_clone "$@";; sync) cmd_sync "$@";; start) cmd_start "$@";;
     push) cmd_push "$@";; mr) cmd_mr "$@";; notes) cmd_notes "$@";; doctor) cmd_doctor "$@";;
     status) cmd_status "$@";; log) cmd_log "$@";; learn) cmd_learn "$@";; version) cmd_version "$@";;
+    update) cmd_update "$@";;
     help|-h|--help) load_state; usage;;
     *) usage; fail E_USAGE "unknown command $c";;
   esac

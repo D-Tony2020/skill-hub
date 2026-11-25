@@ -17,6 +17,16 @@
 | `E_DIRTY` | 工作区有未提交改动 | A：提交或 `git stash`，再重试 |
 | `E_USAGE` | 命令用法错 | A：`bag help` |
 
+### Skill 自更新（`bag update`）
+
+| 错误码 | 含义 | 处理 |
+| --- | --- | --- |
+| `E_SRC_CLONE` / `E_SRC_FETCH` | 拉不到 skill-hub 仓库（网络问题，或 Git 没有 Dean 的 GitHub 登录） | A：不影响日常工作，继续用当前版本。D：在 Git Bash 里交互执行一次 `git clone https://github.com/D-Tony2020/skill-hub ~/skill-hub` 或 `git -C ~/skill-hub fetch`，完成 GitHub 登录 |
+| `E_SRC_DIRTY` | `~/skill-hub/skills/blacklake-auto-git` 下有本地改动 | A：如果是你为修 Skill 做的改动，提交到分支并开 PR；不需要的改动，确认后用 `git -C ~/skill-hub checkout -- skills/blacklake-auto-git` 丢弃 |
+| `E_SRC_DIVERGED` | 本地 main 有未推送的提交 | A：把这些提交移到新分支并开 PR，然后 `git -C ~/skill-hub reset --hard origin/main`（先确认这些提交已备份到分支） |
+| `E_SRC_PLUGIN` | 以插件方式安装 | D：执行 `/plugin marketplace update blacklake-skill-hub`，再 `/plugin update blacklake-auto-git` |
+| `E_SRC_LAYOUT` / `E_SRC_INSTALL` | 仓库里的目录结构变了，或安装脚本失败 | A：读输出原文，`git -C ~/skill-hub log -5 -- skills/` 看最近的改动；处理不了就告诉 Dean |
+
 ## 二、Windows ↔ Mac（SSH）
 
 | 错误码 | 含义 | 处理 |

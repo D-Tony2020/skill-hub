@@ -27,7 +27,7 @@ const VISIBILITIES = ['public', 'namespace-only', 'private'];
 function parseArgs(argv) {
   const opts = {
     registry: process.env.SKILLHUB_REGISTRY || 'http://localhost:8088',
-    namespace: process.env.SKILLHUB_NAMESPACE || 'global',
+    namespace: process.env.SKILLHUB_NAMESPACE || 'blacklake',
     visibility: process.env.SKILLHUB_VISIBILITY || 'public',
     skill: null, dryRun: false, force: false,
   };

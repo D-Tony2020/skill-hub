@@ -76,7 +76,7 @@ npm run publish:local                   # 提交所有 published 的新版本
 npm run publish:local -- --skill blacklake-auto-git --force   # 重发单个
 ```
 
-可用参数 `--registry`、`--namespace`（默认 global）、`--visibility`（默认 public），也可用环境变量 `SKILLHUB_REGISTRY`、`SKILLHUB_NAMESPACE`、`SKILLHUB_VISIBILITY`、`SKILLHUB_BIN`。脚本总是显式传 registry，CLI 自带的默认地址是公网服务器。
+可用参数 `--registry`、`--namespace`（默认 blacklake 团队空间，需先在网页 /dashboard/namespaces 建好）、`--visibility`（默认 public），也可用环境变量 `SKILLHUB_REGISTRY`、`SKILLHUB_NAMESPACE`、`SKILLHUB_VISIBILITY`、`SKILLHUB_BIN`。脚本总是显式传 registry，CLI 自带的默认地址是公网服务器。
 
 - CLI 登录得到的令牌只能"提交"，提交后进入 SkillHub 审核队列，由管理员在网页上批准才算上架。这一步就是看板里的审计与上架。
 - SkillHub 不认 `VERSION` 这类无扩展名文件，也不读它；脚本在临时副本里去掉这些文件，并把版本写进 SKILL.md 的 `metadata.version`，源码不变。

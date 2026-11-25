@@ -1,0 +1,28 @@
+name: validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Tooling unit tests
+        run: npm test
+      - name: Validate skills
+        run: npm run validate
+      - name: Marketplace manifest is up to date
+        run: npm run build:check
+      - name: Claude Code plugin validator
+        run: npx -y @anthropic-ai/claude-code@latest plugin validate .

@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { loadSkills, validateSkill, buildMarketplace, packageFiles, parseFrontmatter } from './lib.mjs';
+import {
+  loadSkills, validateSkill, buildMarketplace, packageFiles, parseFrontmatter, stageForSkillHub, withMetadataVersion,
+} from './lib.mjs';
 
 function makeRepo(skills) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hub-'));
@@ -109,4 +111,29 @@ test('package files leave out tests, evals, hub.yaml and caches', () => {
     },
   });
   assert.deepEqual(packageFiles(loadSkills(root)[0]), ['SKILL.md', 'scripts/run.sh']);
+});
+
+test('SkillHub staging drops extensionless files and writes metadata.version', () => {
+  const root = makeRepo({
+    hubpkg: {
+      'SKILL.md': '---\nname: hubpkg\ndescription: Does it.\nmetadata:\n  author: dean\n---\n\n# body\n',
+      VERSION: '1.4.0\n', 'hub.yaml': 'status: published\n', 'scripts/run.sh': 'echo\n', 'scripts/Makefile': 'x\n',
+    },
+  });
+  const [skill] = loadSkills(root);
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'stage-'));
+  const staged = stageForSkillHub(skill, path.join(out, 'hubpkg'));
+  assert.deepEqual(staged.files, ['SKILL.md', 'scripts/run.sh']);
+  assert.deepEqual(staged.dropped, ['VERSION', 'scripts/Makefile']);
+  const fm = parseFrontmatter(fs.readFileSync(path.join(staged.dir, 'SKILL.md'), 'utf8')).data;
+  assert.deepEqual(fm.metadata, { author: 'dean', version: '1.4.0' });
+  assert.equal(fm.name, 'hubpkg');
+  assert.match(fs.readFileSync(path.join(staged.dir, 'SKILL.md'), 'utf8'), /\n# body\n$/);
+  // the source SKILL.md is untouched
+  assert.doesNotMatch(fs.readFileSync(path.join(skill.dir, 'SKILL.md'), 'utf8'), /version/);
+});
+
+test('withMetadataVersion keeps CRLF/BOM input parseable and adds metadata when absent', () => {
+  const out = withMetadataVersion('﻿---\r\nname: a\r\ndescription: b\r\n---\r\nbody', '2.0.0');
+  assert.deepEqual(parseFrontmatter(out).data, { name: 'a', description: 'b', metadata: { version: '2.0.0' } });
 });

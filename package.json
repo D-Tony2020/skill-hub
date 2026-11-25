@@ -2,13 +2,16 @@
   "name": "skill-hub-tools",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "validate": "node tools/hub/cli.mjs validate",
     "build": "node tools/hub/cli.mjs build",
     "build:check": "node tools/hub/cli.mjs build --check",
     "list": "node tools/hub/cli.mjs list",
-    "test": "node --test tools/hub/lib.test.mjs"
+    "test": "node --test tools/hub/lib.test.mjs",
+    "publish:local": "node tools/hub/publish-local.mjs"
   },
   "dependencies": {
     "yaml": "2.6.1"

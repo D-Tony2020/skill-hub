@@ -176,3 +176,45 @@ export function packageFiles(skill) {
   walk('');
   return out.sort();
 }
+
+// ---- SkillHub (self-hosted iflytek/skillhub) packaging ----------------------
+// SkillHub warns on files outside its extension allowlist and the CLI treats any
+// warning as a failure, so extensionless files (VERSION, LICENSE...) are left out.
+// SkillHub ignores the VERSION file, so the version goes into SKILL.md as
+// metadata.version (a documented frontmatter field) in the staged copy only.
+export function skillHubFiles(skill) {
+  const kept = [];
+  const dropped = [];
+  for (const rel of packageFiles(skill)) {
+    const base = rel.split('/').pop();
+    if (base !== 'SKILL.md' && !/\.[A-Za-z0-9]+$/.test(base)) dropped.push(rel);
+    else kept.push(rel);
+  }
+  return { kept, dropped };
+}
+
+export function withMetadataVersion(skillMdText, version) {
+  const text = skillMdText.replace(/^﻿/, '').replace(/\r\n/g, '\n');
+  const match = text.match(/^---\n([\s\S]*?)\n---(\n|$)/);
+  if (!match) throw new Error('SKILL.md has no frontmatter');
+  const doc = YAML.parseDocument(match[1]);
+  doc.setIn(['metadata', 'version'], String(version));
+  return `---\n${doc.toString({ lineWidth: 0 }).trimEnd()}\n---${match[2]}${text.slice(match[0].length)}`;
+}
+
+// Copy a skill into `outDir` the way SkillHub should receive it.
+export function stageForSkillHub(skill, outDir) {
+  if (!skill.version) throw new Error(`${skill.dirName} has no version`);
+  const { kept, dropped } = skillHubFiles(skill);
+  fs.rmSync(outDir, { recursive: true, force: true });
+  for (const rel of kept) {
+    const dest = path.join(outDir, rel);
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    if (rel === 'SKILL.md') {
+      fs.writeFileSync(dest, withMetadataVersion(fs.readFileSync(path.join(skill.dir, rel), 'utf8'), skill.version));
+    } else {
+      fs.copyFileSync(path.join(skill.dir, rel), dest);
+    }
+  }
+  return { dir: outDir, files: kept, dropped };
+}

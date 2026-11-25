@@ -37,6 +37,7 @@ Windows 开发机（你 + Claude Code）           内网 Mac（Dean 的电脑�
   - `already_latest`：已是最新，无需操作。
   - `restart_session=yes`：新版本从**下一个会话**开始生效，本会话继续按已加载的说明工作，并告诉 Dean。
   - `mac_upgrade_needed=yes`：Mac 端代码也有变化，按 [references/iteration.md](references/iteration.md)「升级 Mac 端」处理。
+  - `E_SRC_DOWNGRADE`：main 上的版本比已安装的旧（已安装的可能来自尚未合并的 PR 分支），保持现状即可，不算故障。
   - 若以插件方式安装，会提示改用 `/plugin` 更新（`E_SRC_PLUGIN`）。
 - **反馈与修改**：Skill 本身的缺陷写进 `~/.blacklake-auto-git/skill-feedback.md`。如果 Dean 要求你直接修，在 `~/skill-hub` 新建分支，修改 `skills/blacklake-auto-git/` 并补测试（`bash skills/blacklake-auto-git/tests/run_all.sh`），升版本号、写 CHANGELOG，推送后开 PR，由 Dean 合并。合并后运行 `bag update`。
 

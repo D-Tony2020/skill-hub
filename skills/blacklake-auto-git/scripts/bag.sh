@@ -479,7 +479,11 @@ cmd_version() {
   ok "version"
 }
 
-cmd_update() {  # update the skill itself from its source repo, then reinstall
+version_lt() {  # version_lt A B -> true if semver A < B
+  [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -t. -k1,1n -k2,2n -k3,3n | head -1)" = "$1" ]
+}
+
+cmd_update() {  # update the skill itself from its source repo, then reinstall [--allow-downgrade]
   case "$SKILL_DIR" in */.claude/plugins/*)
     fail E_SRC_PLUGIN "installed as a plugin: ask Dean to run /plugin marketplace update blacklake-skill-hub, then /plugin update blacklake-auto-git";;
   esac
@@ -502,6 +506,10 @@ cmd_update() {  # update the skill itself from its source repo, then reinstall
   new_ver="$(cat "$src/$SOURCE_PATH/VERSION")"
   new_air="$(sed -n 's/^VERSION = "\([^"]*\)".*$/\1/p' "$src/$SOURCE_PATH/scripts/mac/airlock.py")"
   if [ -n "$old_commit" ] && [ "$old_commit" = "$new_commit" ]; then ok "update already_latest version=$new_ver commit=$new_commit"; fi
+  # never downgrade silently (e.g. the installed copy came from an unmerged PR branch)
+  if [ "${1:-}" != "--allow-downgrade" ] && version_lt "$new_ver" "$BAG_VERSION"; then
+    fail E_SRC_DOWNGRADE "source $SOURCE_BRANCH has $new_ver ($new_commit) but $BAG_VERSION is installed; keeping the installed version (bag update --allow-downgrade to force)"
+  fi
   CLAUDE_SKILLS_DIR="$(dirname "$SKILL_DIR")" bash "$src/$SOURCE_PATH/scripts/install_local.sh" || fail E_SRC_INSTALL "install_local.sh failed"
   info "changes: $(git -C "$src" log --oneline "${old_commit:-HEAD~1}..HEAD" -- "$SOURCE_PATH" 2>/dev/null | head -10 | tr '\n' ';')"
   hist update "$BAG_VERSION -> $new_ver ($new_commit)"
@@ -532,7 +540,7 @@ Health & learning
   status | log [n] | version
   learn "<symptom> -> <cause> -> <fix>" record a new environment fact
 Skill maintenance (source: $SOURCE_REPO, $SOURCE_PATH)
-  update                               pull the latest skill from its repo and reinstall
+  update [--allow-downgrade]           pull the latest skill from its repo and reinstall (never downgrades by default)
 EOF
 }
 

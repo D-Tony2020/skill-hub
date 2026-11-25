@@ -178,6 +178,22 @@ class UpdateTest(unittest.TestCase):
         p = self.run_bag("update")
         self.assertIn("mac_upgrade_needed=yes", last_line(p), p.stdout + p.stderr)
 
+    def test_update_refuses_downgrade(self):
+        # installed copy is newer than main (e.g. installed from an unmerged PR branch)
+        open(os.path.join(self.installed, "VERSION"), "w").write("99.0.0\n")
+        self.publish("README.extra", "x", "unrelated change on main")
+        p = self.run_bag("update")
+        self.assertIn("RESULT fail code=E_SRC_DOWNGRADE", last_line(p), p.stdout + p.stderr)
+        self.assertEqual(open(os.path.join(self.installed, "VERSION")).read().strip(), "99.0.0")
+        p = self.run_bag("update", "--allow-downgrade")
+        self.assertIn("RESULT ok update", last_line(p), p.stdout + p.stderr)
+
+    def test_version_compare_is_numeric(self):
+        p = subprocess.run(["bash", "-c", 'source <(sed -n "/^version_lt()/,/^}/p" "%s"); '
+                            'version_lt 1.9.0 1.10.0 && ! version_lt 1.10.0 1.9.0 && ! version_lt 1.1.0 1.1.0 && echo yes'
+                            % os.path.join(SKILL, "scripts", "bag.sh")], capture_output=True, text=True)
+        self.assertEqual(p.stdout.strip(), "yes", p.stderr)
+
     def test_update_refuses_dirty_source(self):
         open(os.path.join(self.clone, "skills/blacklake-auto-git/SKILL.md"), "a").write("local edit\n")
         p = self.run_bag("update")

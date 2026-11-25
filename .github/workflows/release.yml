@@ -34,9 +34,9 @@ jobs:
           set -euo pipefail
           mkdir -p dist
           node tools/hub/cli.mjs list --json > dist/skills.json
-          for row in $(jq -c '.[] | select(.status == "published")' dist/skills.json); do
-            name=$(jq -r .name <<<"$row")
-            version=$(jq -r .version <<<"$row")
+          # One "name version" pair per line; descriptions contain spaces, so never word-split JSON.
+          jq -r '.[] | select(.status == "published") | "\(.name) \(.version)"' dist/skills.json > dist/published.txt
+          while read -r name version <&3; do  # fd 3 so gh and zip cannot swallow the list
             tag="${name}@v${version}"
             if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
               echo "skip ${tag}: already released"
@@ -47,4 +47,4 @@ jobs:
             notes="Upload ${name}-${version}.zip at claude.ai → Customize → Skills. Changes: see skills/${name}/CHANGELOG.md."
             gh release create "${tag}" "${zip_path}" --title "${tag}" --notes "${notes}" --target "${GITHUB_SHA}"
             echo "released ${tag}"
-          done
+          done 3< dist/published.txt

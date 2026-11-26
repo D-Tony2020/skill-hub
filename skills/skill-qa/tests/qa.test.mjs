@@ -4,12 +4,12 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 process.env.SKILL_QA_NO_AUTO_IDENTITY = '1';
 process.env.SKILL_QA_IDENTITY = 'Dean';
 process.env.SKILL_SCANNER_BIN = 'skill-scanner-not-installed';
-const qa = await import(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'qa.mjs'));
+const qa = await import(pathToFileURL(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'qa.mjs')).href);
 
 const GOOD_MD = `---
 name: demo-skill

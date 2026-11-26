@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- 修复：`tests/qa.test.mjs` 在 Windows 上加载失败（动态导入传了 `C:\...` 绝对路径，改为 file:// URL）。CI 跑在 Linux 上所以之前没暴露
+
 ## 0.2.0 - 2026-11-26
 
 - 新增 G15 个人化耦合：查作者姓名（git、系统用户名、hub.yaml owner、identity.txt）、个人目录路径、个人分支前缀（形如 `<名字>-cc/`）、写死的邮箱；跳过网址、示例名、占位符、CHANGELOG 和 tests/evals。可登记例外

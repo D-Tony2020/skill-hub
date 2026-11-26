@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Publish every `published` skill in this repo to a self-hosted SkillHub (phase 1: localhost).
 //
-//   npm run publish:local -- [--dry-run] [--skill <name>] [--force]
+//   npm run publish:local -- [--dry-run] [--skill <name>] [--force] [--skip-qa "<reason>"]
 //                            [--registry <url>] [--namespace <slug>] [--visibility public|namespace-only|private]
 //
 // Needs the SkillHub CLI (`npm i -g @astron-team/skillhub`) and a one-time
@@ -19,6 +19,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { loadSkills, validateSkill, stageForSkillHub } from './lib.mjs';
+import { reportStatus } from '../../skills/skill-qa/scripts/qa.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const STATE_FILE = path.join(ROOT, '.hub-state.json');
@@ -29,7 +30,7 @@ function parseArgs(argv) {
     registry: process.env.SKILLHUB_REGISTRY || 'http://localhost:8088',
     namespace: process.env.SKILLHUB_NAMESPACE || 'blacklake',
     visibility: process.env.SKILLHUB_VISIBILITY || 'public',
-    skill: null, dryRun: false, force: false,
+    skill: null, dryRun: false, force: false, skipQa: null,
   };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
@@ -45,6 +46,7 @@ function parseArgs(argv) {
     else if (a === '--skill') opts.skill = next();
     else if (a === '--dry-run') opts.dryRun = true;
     else if (a === '--force') opts.force = true;
+    else if (a === '--skip-qa') opts.skipQa = next();
     else throw new Error(`unknown option ${a}`);
   }
   if (!VISIBILITIES.includes(opts.visibility)) throw new Error(`--visibility must be one of ${VISIBILITIES.join(', ')}`);
@@ -111,6 +113,17 @@ function main() {
       console.log(`FAIL ${label}: ${errors.join('; ')}`);
       failed += 1;
       continue;
+    }
+    // Gate: everything entering the Hub has a current skill-qa report with verdict include.
+    const qa = reportStatus(skill.dir);
+    if (qa.state !== 'pass') {
+      const why = { missing: 'no QA_REPORT.md', unreadable: 'QA_REPORT.md not written by skill-qa', stale: 'QA_REPORT.md is stale (files changed after the report)', 'not-pass': `skill-qa verdict is ${qa.meta?.verdict}` }[qa.state];
+      if (!opts.skipQa) {
+        console.log(`FAIL ${label}: ${why}. Run skill-qa and commit a passing report first (or, only with the owner's explicit written OK, --skip-qa "<reason>")`);
+        failed += 1;
+        continue;
+      }
+      console.log(`WARN ${label}: ${why}; publishing anyway because --skip-qa was given: ${opts.skipQa}`);
     }
     const prev = done[skill.dirName];
     if (!opts.force && prev?.version === skill.version) {

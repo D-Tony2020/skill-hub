@@ -1,0 +1,9 @@
+[
+  {
+    "gate": "SCAN",
+    "rule": "COMMAND_INJECTION_JS_CHILD_PROCESS",
+    "file": "scripts/qa.mjs",
+    "reason": "只用 spawnSync 以参数数组（不经 shell）调用两个固定命令：git config --get user.name/user.email（G15 读作者身份）和 skill-scanner scan <临时目录> --format json（S4 本地扫描）。命令名和参数都不来自被检查的 Skill，没有拼接字符串，不存在注入面",
+    "date": "2026-11-26"
+  }
+]

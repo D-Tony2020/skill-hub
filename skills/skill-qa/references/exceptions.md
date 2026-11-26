@@ -25,7 +25,7 @@
     "rule": "COMPOUND_FETCH_EXECUTE",
     "file": "scripts/bag.sh",
     "reason": "扫描器按整个文件匹配 curl 和 sudo bash；实际命令执行前用 shasum -a 256 -c 核对哈希，哈希不对就不执行",
-    "approved_by": "Dean",
+    "approved_by": "<负责人>",
     "date": "2026-11-26"
   },
   {
@@ -33,7 +33,7 @@
     "rule": "TOOL_ABUSE_SYSTEM_MODIFICATION",
     "file": "scripts/mac/install.sh",
     "reason": "安装 launchd 系统服务必须 chown root:wheel",
-    "approved_by": "Dean",
+    "approved_by": "<负责人>",
     "date": "2026-11-26"
   }
 ]

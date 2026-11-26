@@ -1,0 +1,14 @@
+[
+  { "query": "这个 skill 能不能上 Hub？帮我检查一下", "should_trigger": true },
+  { "query": "上传之前先给这个 skill 做个质检", "should_trigger": true },
+  { "query": "我写的这个 skill 别人装上能直接用吗", "should_trigger": true },
+  { "query": "用可分发规范审一下 my-skill，出个验收报告", "should_trigger": true },
+  { "query": "skill-qa 跑一下 skills/foo", "should_trigger": true },
+  { "query": "这个 skill 里有没有写死我自己的名字和路径", "should_trigger": true },
+  { "query": "帮我从零写一个处理飞书审批的 skill", "should_trigger": false },
+  { "query": "把 blacklake-auto-git 发布到 SkillHub", "should_trigger": false },
+  { "query": "在这台电脑上安装 skill-hub-ops", "should_trigger": false },
+  { "query": "帮我 review 一下这个 Python 函数有没有 bug", "should_trigger": false },
+  { "query": "优化一下这个 skill 的 description 让它更容易触发", "should_trigger": false },
+  { "query": "检查一下 package.json 的依赖有没有安全漏洞", "should_trigger": false }
+]

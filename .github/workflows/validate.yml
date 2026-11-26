@@ -30,5 +30,12 @@ jobs:
         run: npm run qa
         env:
           SKILL_QA_NO_AUTO_IDENTITY: '1'
+      # Advisory until every suite member is published in the repo (skill-qa is still a draft).
+      - name: Infra suite matches the repo (advisory)
+        run: node tools/hub/cli.mjs suite --check || echo "::warning title=infra suite::suite members differ from the repo; see node tools/hub/cli.mjs suite"
+      - name: Skill chain overview
+        run: node tools/hub/cli.mjs chain
+        env:
+          SKILL_QA_NO_AUTO_IDENTITY: '1'
       - name: Claude Code plugin validator
         run: npx -y @anthropic-ai/claude-code@latest plugin validate .

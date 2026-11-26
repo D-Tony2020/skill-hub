@@ -1,0 +1,7 @@
+status: published
+version: 0.1.0
+owner: dean
+tags: [skill-hub, infra, onboarding]
+requires:
+  commands: [node, npm]
+notes: 基建套件第 0 步。套件成员定义在 assets/infra-suite.json，仓库工具 suite --check 核对

@@ -1,0 +1,24 @@
+{
+  "$comment": "黑湖 Skill Hub 基建套件的唯一事实来源。结构与 SkillHub suite.yaml（docs/25-skill-suites.md）一致，JSON 也是合法 YAML；stage/roles 是本仓库的扩展字段。hub-starter 按它装齐基建；仓库工具 `node tools/hub/cli.mjs suite --check` 核对成员版本；SkillHub CLI 还不能发布套件，负责人照 `node tools/hub/cli.mjs suite` 的输出在网页套件编辑器里建新版本。改成员或成员版本要升 metadata.version。",
+  "apiVersion": "skillhub.iflytek.com/v1alpha1",
+  "kind": "SkillSuite",
+  "metadata": {
+    "namespace": "blacklake",
+    "slug": "infra",
+    "version": "0.1.0",
+    "displayName": "黑湖 Skill Hub 基建套件"
+  },
+  "spec": {
+    "visibility": "PUBLIC",
+    "entrySkill": "@blacklake/hub-starter@0.1.0",
+    "members": [
+      { "skill": "@blacklake/hub-starter", "version": "0.1.0", "stage": "0 接入", "roles": ["author", "user", "admin"] },
+      { "skill": "@blacklake/skill-creator", "version": "1.0.0", "stage": "1 生产", "roles": ["author"] },
+      { "skill": "@blacklake/skill-intent", "version": "0.1.0", "stage": "2 意图对齐", "roles": ["author"] },
+      { "skill": "@blacklake/skill-qa", "version": "0.2.0", "stage": "3 质检", "roles": ["author", "admin"] },
+      { "skill": "@blacklake/skill-hub-ops", "version": "0.2.0", "stage": "4 入库与发布", "roles": ["author", "admin"] },
+      { "skill": "@global/skillhub-cli", "version": "2.0.2", "stage": "5 安装与升级", "roles": ["author", "user", "admin"] },
+      { "skill": "@blacklake/skill-feedback", "version": "0.1.0", "stage": "6 反馈", "roles": ["author", "user", "admin"] }
+    ]
+  }
+}

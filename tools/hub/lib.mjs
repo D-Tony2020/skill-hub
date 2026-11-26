@@ -16,11 +16,12 @@ const KNOWN_FRONTMATTER = new Set([
   'when_to_use', 'argument-hint', 'disable-model-invocation', 'user-invocable',
   'model', 'effort', 'context', 'agent', 'hooks', 'paths', 'shell',
 ]);
-const KNOWN_HUB_KEYS = new Set(['version', 'status', 'owner', 'tags', 'notes', 'requires', 'source']);
+const KNOWN_HUB_KEYS = new Set(['version', 'status', 'owner', 'tags', 'notes', 'requires', 'source', 'upstream']);
 const REQUIRES_KEYS = new Set(['skills', 'commands', 'env']);
 // Files that are development material, not part of what an agent loads.
-// QA_REPORT.md and qa-exceptions.json are review material for the repo PR; skill-qa leaves them out of the package too.
-const PACKAGE_EXCLUDES = new Set(['hub.yaml', 'tests', 'evals', '.gitattributes', '.DS_Store', '__pycache__', '.hub-source.json', 'QA_REPORT.md', 'qa-exceptions.json']);
+// QA_REPORT.md, qa-exceptions.json and INTENT.md (skill-intent's target card) are review material for the repo PR;
+// skill-qa leaves them out of the package too.
+const PACKAGE_EXCLUDES = new Set(['hub.yaml', 'tests', 'evals', '.gitattributes', '.DS_Store', '__pycache__', '.hub-source.json', 'QA_REPORT.md', 'qa-exceptions.json', 'INTENT.md']);
 
 const NAME_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const SEMVER_RE = /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/;
@@ -136,6 +137,15 @@ export function validateSkill(skill) {
   if (skill.version != null && !SEMVER_RE.test(skill.version)) errors.push(`version "${skill.version}" is not semver (x.y.z)`);
   if (skill.status === 'published' && skill.version == null) errors.push('a published skill needs a version (hub.yaml version or VERSION file)');
   if (fs.existsSync(path.join(skill.dir, 'bin'))) errors.push('top-level bin/ is rejected by claude.ai organization sync; use scripts/');
+
+  const up = skill.hub?.upstream;
+  if (up != null) {
+    if (typeof up !== 'object' || Array.isArray(up)) errors.push('hub.yaml upstream must be a mapping (repo, path, commit, license)');
+    else {
+      for (const k of ['repo', 'path', 'commit', 'license']) if (!up[k]) errors.push(`hub.yaml upstream.${k} is required for a mirrored skill`);
+      if (up.commit && !/^[0-9a-f]{7,40}$/.test(String(up.commit))) errors.push('hub.yaml upstream.commit must be a git commit hash');
+    }
+  }
 
   const req = skill.hub?.requires;
   if (req != null) {

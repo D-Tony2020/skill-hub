@@ -1,0 +1,38 @@
+{
+  "skill_name": "skill-creator",
+  "version": "1.0.0",
+  "notes": "Mirror of the official skill. These cases check it still works when installed from SkillHub and fits the Hub chain; upstream behaviour itself is not re-specified here.",
+  "evals": [
+    {
+      "id": "draft-new-skill",
+      "category": "function",
+      "prompt": "帮我做一个 skill：把客户发来的 BOM Excel 转成我们 MES 的导入模板，列名对不上的要列出来",
+      "setup": "empty working directory; python available",
+      "expectations": [
+        "asks about intent, triggers and output before writing (Capture Intent)",
+        "writes a SKILL.md with name and a description that says when to trigger",
+        "proposes 2-3 realistic test prompts"
+      ]
+    },
+    {
+      "id": "installed-from-hub-paths",
+      "category": "function",
+      "prompt": "用 skill-creator 给 ~/work/po-helper 跑一下评测，看装了和没装差多少",
+      "setup": "skill-creator installed via skillhub into ~/.claude/skills/skill-creator (no hub.yaml, no evals of its own)",
+      "expectations": [
+        "resolves scripts relative to the installed skill-creator folder, not a hardcoded path",
+        "sets up with-skill and baseline runs in a workspace next to the target skill"
+      ]
+    },
+    {
+      "id": "package-skill",
+      "category": "function",
+      "prompt": "把 ~/work/po-helper 打包成 .skill 文件",
+      "setup": "valid skill folder",
+      "expectations": [
+        "runs scripts/package_skill.py on the folder",
+        "reports where the .skill file was written"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+[
+  { "query": "skill-qa 有个误报，帮我反馈给作者", "should_trigger": true },
+  { "query": "这个 hub 上装的排产 skill 不太好用，交期老算错，帮我整理一下提给维护的人", "should_trigger": true },
+  { "query": "我说'帮我画个架构图'的时候 arch-diagram 没出来，这个应该跟谁说", "should_trigger": true },
+  { "query": "给 hub-starter 提个建议：登录那步能不能说得更清楚", "should_trigger": true },
+  { "query": "blacklake-auto-git 的文档我看不懂，能不能反馈一下", "should_trigger": true },
+  { "query": "skill-qa 有个误报，帮我把 qa.mjs 里的 G4 规则改掉", "should_trigger": false },
+  { "query": "帮我把 skill-qa 0.3.0 发布到 Hub", "should_trigger": false },
+  { "query": "客户反馈 MES 报工页面卡顿，帮我写个问题单给研发", "should_trigger": false },
+  { "query": "npm install 报 EACCES，怎么办", "should_trigger": false },
+  { "query": "这个 skill 能不能上 Hub？帮我质检", "should_trigger": false }
+]

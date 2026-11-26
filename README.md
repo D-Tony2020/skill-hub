@@ -25,6 +25,30 @@ claude plugin install <skill-name>@blacklake-skill-hub
 
 claude.ai：到本仓库 Releases 下载 `<skill>-<version>.zip`，在 claude.ai → Customize → Skills 上传。
 
+## Skill 链：基建套件 `@blacklake/infra`
+
+一个 Skill 从无到有、上架、被别人装上、再把问题送回来，每一步都有一个基建 Skill 负责。它们打包成 SkillHub 套件 `@blacklake/infra`，新人一条命令装齐。成员与版本以 `skills/hub-starter/assets/infra-suite.json` 为准。
+
+| 步骤 | Skill | 产出 / 交接 | 谁用 |
+| --- | --- | --- | --- |
+| 0 接入 | hub-starter | 官方 CLI、设备码登录、装齐套件、`~/.skill-hub/profile.json` | 所有人 |
+| 1 生产 | skill-creator（官方镜像）、session-distiller（草稿 PR #6） | SKILL.md、评测用例 | 作者 |
+| 2 意图对齐 | skill-intent | `INTENT.md`（scope + 可选 bound_to + verdict），不进发布包 | 作者 |
+| 3 质检 | skill-qa | `QA_REPORT.md`（带内容哈希），G0 读 INTENT.md 分诊 | 作者、管理员 |
+| 4 入库与发布 | skill-hub-ops | PR、Release、SkillHub 提交、套件版本、镜像同步、回滚、下架 | 作者、负责人 |
+| 5 安装与升级 | skillhub-cli（SkillHub 内置） | 已安装的 Skill | 所有人 |
+| 6 反馈 | skill-feedback | 脱敏的 issue 草稿与预填链接 → 回到第 4 步分诊、第 1 步修 | 所有人 |
+
+`npm run chain` 显示每个 Skill 卡在哪一步、下一步交给谁；`npm run suite` 核对套件与仓库是否一致。
+
+### 新人第一句话
+
+把下面这句话发给自己的 Claude（Claude Code 或 Cowork 桌面端），`<Hub 地址>` 找 Hub 管理员要：
+
+> 读 `<Hub 地址>/registry/skill.md` 连接 SkillHub，然后安装 `@blacklake/hub-starter`，按它帮我接入 Skill Hub。
+
+`/registry/skill.md` 是 SkillHub 自带的接入指南（装官方 CLI、连上这个 Hub）；hub-starter 接着完成登录、装齐套件和按角色的配置。已经装了 Claude Code 插件市场的，也可以 `claude plugin install hub-starter@blacklake-skill-hub` 先拿到 hub-starter。claude.ai 网页端从 Releases 下载 zip 上传。
+
 ## 目录规范
 
 ```
@@ -33,6 +57,9 @@ skills/<skill-name>/
 ├── hub.yaml        # Hub 元数据，见下文；没有它的 skill 视为草稿
 ├── VERSION         # 可选，与 hub.yaml 的 version 二选一，两者都写必须一致
 ├── CHANGELOG.md    # 发版说明
+├── INTENT.md       # skill-intent 写的目标卡（不进发布包）
+├── QA_REPORT.md    # skill-qa 写的质检报告（不进发布包）
+├── config.schema.json  # 状态位清单（固定/预设/实例/角色四层）
 ├── scripts/        # 可执行脚本（不要放在顶层 bin/，claude.ai 组织同步会拒收）
 ├── references/     # 按需加载的参考资料
 ├── tests/  evals/  # 开发材料，不进发布包
@@ -50,6 +77,11 @@ requires:              # 可选：运行时依赖，hub install / status 会检�
   skills: [drawio-skill]
   commands: [py]
   env: [SOME_VAR]
+upstream:              # 仅官方镜像：上游仓库、目录、固定 commit、许可（hub upstream 维护）
+  repo: https://github.com/anthropics/skills
+  path: skills/skill-creator
+  commit: <sha>
+  license: Apache-2.0
 ```
 
 ## 校验规则
@@ -73,11 +105,15 @@ Agent 按 `skills/skill-hub-ops/SKILL.md` 的手册来导入、升级、发布�
 | `node tools/hub/cli.mjs bump <skill> patch\|minor\|major -m 说明` | 升版本（VERSION 或 hub.yaml）并在 CHANGELOG 顶部加一条 |
 | `node tools/hub/cli.mjs install <skill> [--dest 目录]` | 装到 `~/.claude/skills/<skill>`，带 `.hub-source.json` 标记，不覆盖手工放置的同名目录 |
 | `node tools/hub/cli.mjs status` | 仓库版本 vs 本机安装版本，以及缺失的依赖 |
-| `npm test` | 工具自身的单元测试 |
+| `node tools/hub/cli.mjs chain [skill]` | 每个 Skill 在链路上的位置：目标卡、质检报告、状态、是否在套件里、下一步 |
+| `node tools/hub/cli.mjs suite [--check]` | 基建套件成员 vs 仓库；打印给网页套件编辑器用的清单 |
+| `node tools/hub/cli.mjs new <name>` | 生成符合 Hub 规范的 draft 骨架（含空白 INTENT.md） |
+| `node tools/hub/cli.mjs upstream <skill> --from <dir> --commit <sha>` | 用上游克隆刷新官方镜像，保留本仓库文件和来源说明 |
+| `npm test` | 工具和各基建 Skill 脚本的单元测试 |
 
-## 发布到 SkillHub（一期：本机）
+## 发布到 SkillHub（一期：负责人电脑上的 Hub，局域网可访问）
 
-SkillHub 部署在 http://localhost:8088，界面默认中文。在部署目录启动：
+SkillHub 部署在负责人电脑的 Docker 里（本机 http://localhost:8088，局域网地址见 Hub 运行手册），界面默认中文。在部署目录启动：
 
 ```
 docker compose --env-file .env.release -f compose.release.yml -f compose.zh.yml up -d
@@ -98,7 +134,7 @@ npm run publish:local                   # 提交所有 published 的新版本
 npm run publish:local -- --skill blacklake-auto-git --force   # 重发单个
 ```
 
-可用参数 `--registry`、`--namespace`（默认 blacklake 团队空间，需先在网页 /dashboard/namespaces 建好）、`--visibility`（默认 public），也可用环境变量 `SKILLHUB_REGISTRY`、`SKILLHUB_NAMESPACE`、`SKILLHUB_VISIBILITY`、`SKILLHUB_BIN`。脚本总是显式传 registry，CLI 自带的默认地址是公网服务器。
+Hub 地址依次取 `--registry`、`SKILLHUB_REGISTRY`、`~/.skill-hub/profile.json`、`~/.skillhub/config.json`，都没有时用 `http://localhost:8088`；脚本开头会打印实际地址。可用参数 `--registry`、`--namespace`（默认 blacklake 团队空间，需先在网页 /dashboard/namespaces 建好）、`--visibility`（默认 public），也可用环境变量 `SKILLHUB_REGISTRY`、`SKILLHUB_NAMESPACE`、`SKILLHUB_VISIBILITY`、`SKILLHUB_BIN`。脚本总是显式传 registry，CLI 自带的默认地址是公网服务器。
 
 - CLI 登录得到的令牌只能"提交"，提交后进入 SkillHub 审核队列，由管理员在网页上批准才算上架。这一步就是看板里的审计与上架。
 - SkillHub 不认 `VERSION` 这类无扩展名文件，也不读它；脚本在临时副本里去掉这些文件，并把版本写进 SKILL.md 的 `metadata.version`，源码不变。
@@ -106,7 +142,7 @@ npm run publish:local -- --skill blacklake-auto-git --force   # 重发单个
 
 ## CI
 
-- `validate.yml`（PR 与 main）：单测、校验、清单是否最新、`claude plugin validate .`
+- `validate.yml`（PR 与 main）：单测、校验、清单是否最新、`claude plugin validate .`；质检报告和套件一致性目前只提示不阻断
 - `release.yml`（合入 main）：每个 published skill 若还没有 `<name>@v<version>` 标签，就打 zip 并创建 GitHub Release。改版本号即发版。
 
 ## 分支

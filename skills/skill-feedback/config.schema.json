@@ -1,0 +1,25 @@
+{
+  "$comment": "skill-feedback 的状态位：目标仓库从被反馈 Skill 的 SKILL.md 读，不预设；脱敏词与 skill-qa 共用。",
+  "skill": "skill-feedback",
+  "schema_version": 1,
+  "onboarding": "不需要首次配置。每次反馈第 1 步用 feedback.mjs locate 推断目标仓库；推断不到才问用户。第 4 步把草稿给用户看、确认后才生成链接",
+  "slots": [
+    { "key": "target_repo", "layer": "instance", "default": null, "infer": "被反馈 Skill 的 SKILL.md「源码仓库」一行", "ask": false, "required": true,
+      "store": ["不保存，每次从 SKILL.md 读"], "sensitive": false,
+      "desc": "issue 发往哪个仓库；SKILL.md 没写就告诉用户找作者" },
+    { "key": "redact_words", "layer": "instance", "default": null, "infer": null, "ask": false, "required": false,
+      "store": ["~/.skill-qa/redact.txt"], "sensitive": true,
+      "desc": "客户名脱敏词，用户自己维护，与 skill-qa 共用" },
+    { "key": "draft_dir", "layer": "preset", "default": "~/.skill-feedback/", "ask": false, "required": false,
+      "store": ["~/.skill-feedback/"], "sensitive": false,
+      "desc": "草稿位置；不写进 Skill 目录" },
+    { "key": "submitter", "layer": "role", "default": "用户本人", "ask": false, "required": false,
+      "store": ["GitHub 上提交 issue 的账号"], "sensitive": false,
+      "desc": "默认由用户用自己的账号提交；用户明确要求时 Agent 才代提" },
+    { "key": "no_public_security_issue", "layer": "fixed", "default": "安全问题私下联系 Hub 负责人", "ask": false,
+      "desc": "不为安全问题发公开 issue" }
+  ],
+  "env": [
+    { "key": "node", "require": "Node.js 18+", "check": "node --version", "on_fail": "手工照模板写草稿，并逐条人工脱敏" }
+  ]
+}

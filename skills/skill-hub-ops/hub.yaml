@@ -1,4 +1,7 @@
 status: published
-version: 0.1.0
+version: 0.2.0
 owner: dean
-tags: [skill-hub, ops]
+tags: [skill-hub, infra, ops]
+requires:
+  commands: [node, npm, git]
+notes: 只服务本 Skill Hub（INTENT.md bound_to skill-hub）。提交到 SkillHub 一步需要 skillhub CLI 且由发布人执行

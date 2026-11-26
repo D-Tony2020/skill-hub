@@ -1,0 +1,9 @@
+[
+  { "query": "帮我从零写一个处理飞书审批的 skill", "should_trigger": true },
+  { "query": "这个 skill 的 description 老是不触发，帮我优化一下", "should_trigger": true },
+  { "query": "给 po-helper 跑个评测，对比装和没装的效果", "should_trigger": true },
+  { "query": "这个 skill 能不能上 Hub？帮我质检", "should_trigger": false },
+  { "query": "把 po-helper 导入 skill-hub 仓库并发布", "should_trigger": false },
+  { "query": "这个 skill 想给团队用，先对齐一下目标和分发范围", "should_trigger": false },
+  { "query": "Hub 上有没有现成的写周报的 skill", "should_trigger": false }
+]

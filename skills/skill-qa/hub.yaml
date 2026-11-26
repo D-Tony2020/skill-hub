@@ -1,0 +1,6 @@
+status: draft
+version: 0.1.0
+owner: dean
+tags: [skill-hub, qa]
+requires:
+  commands: [node]

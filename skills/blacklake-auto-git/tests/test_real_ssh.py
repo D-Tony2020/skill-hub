@@ -98,7 +98,7 @@ Match User airlock
         fp = sh(["ssh-keygen", "-lf", cls.hostkey + ".pub"]).stdout.split()[1]
         cls.fp = fp
         host = "127.0.0.1" if cls.port == 22 else "127.0.0.1"
-        cls.pair = "BAG-PAIR v=1.0.0 host=nonexistent-mac.local ip=%s fp=%s user=airlock" % (host, fp)
+        cls.pair = "BAG-PAIR v=1.1.0 host=nonexistent-mac.local ip=%s fp=%s user=airlock" % (host, fp)
 
     @classmethod
     def tearDownClass(cls):
@@ -127,8 +127,8 @@ Match User airlock
         open(os.path.join(d, "r.txt"), "w").write("r\n")
         sh("git add . && git commit -qm 'real ssh change'", cwd=d, env=self.env)
         p = self.bag("push")
-        self.assertIn("RESULT ok push branch=deans-cc/real-ssh mr=https://gitlab.test", p.stdout)
-        self.assertEqual(self.e.gitlab_ref("deans-cc/real-ssh"),
+        self.assertIn("RESULT ok push branch=zhangsan-cc/real-ssh mr=https://gitlab.test", p.stdout)
+        self.assertEqual(self.e.gitlab_ref("zhangsan-cc/real-ssh"),
                          sh(["git", "rev-parse", "HEAD"], cwd=d).stdout.strip())
         p = self.bag("doctor")
         self.assertIn("RESULT ok doctor", p.stdout)

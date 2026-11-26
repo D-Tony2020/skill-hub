@@ -1,0 +1,26 @@
+[
+  {
+    "gate": "SCAN",
+    "rule": "COMPOUND_FETCH_EXECUTE",
+    "file": "scripts/bag.sh",
+    "reason": "扫描器按整个文件匹配 curl 和 sudo bash；给 Mac 的安装命令在执行前用 shasum -a 256 -c 核对安装器哈希，哈希不一致就不执行（1.1.2 起），同网段篡改无法生效",
+    "approved_by": "Dean",
+    "date": "2026-11-26"
+  },
+  {
+    "gate": "SCAN",
+    "rule": "TOOL_ABUSE_SYSTEM_MODIFICATION",
+    "file": "scripts/mac/install.sh",
+    "reason": "安装器要创建专用 airlock 用户、写 sshd 限制配置和 launchd 系统服务，这些文件必须 root 所有（chown root），否则 launchd/sshd 拒绝加载；这是气闸的安全边界本身",
+    "approved_by": "Dean",
+    "date": "2026-11-26"
+  },
+  {
+    "gate": "SCAN",
+    "rule": "DATA_EXFIL_ENV_VARS",
+    "file": "scripts/mac/airlock.py",
+    "reason": "气闸调用 git 转推 GitLab 时复制当前进程环境变量并加入 GIT_* 和代理设置，只传给本机 git 子进程，不发往任何网络地址；令牌只经 GitLab HTTPS 认证头使用",
+    "approved_by": "Dean",
+    "date": "2026-11-26"
+  }
+]

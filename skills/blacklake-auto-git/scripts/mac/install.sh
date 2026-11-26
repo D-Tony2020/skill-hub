@@ -338,7 +338,7 @@ main() {
   esac
 
   placeholder "$DEF_GITLAB_URL" && DEF_GITLAB_URL=""
-  placeholder "$DEF_PREFIX" && DEF_PREFIX="deans-cc/"
+  placeholder "$DEF_PREFIX" && DEF_PREFIX=""
   placeholder "$DEF_TARGET" && DEF_TARGET="main"
   placeholder "$DEF_PUBKEY" && DEF_PUBKEY=""
   [ -n "$url" ] || url="$DEF_GITLAB_URL"
@@ -348,6 +348,12 @@ main() {
   fi
   case "$url" in https://*|http://*) ;; *) die "need the HTTPS clone URL (got '$url')";; esac
   [ -n "$prefix" ] || prefix="$DEF_PREFIX"
+  if [ -z "$prefix" ]; then
+    printf 'Branch prefix the agent may push to (agreed with the user, e.g. zhangsan-cc/): '
+    read -r prefix
+  fi
+  case "$prefix" in "") die "a branch prefix is required";; */) ;; *) prefix="$prefix/";; esac
+  echo "$prefix" | grep -qE '^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*/$' || die "branch prefix may only contain A-Z a-z 0-9 . _ - and /"
   [ -n "$target" ] || target="$DEF_TARGET"
   [ -n "$DEF_PUBKEY" ] || die "no agent public key embedded; rebuild the installer with bag.sh bundle"
 

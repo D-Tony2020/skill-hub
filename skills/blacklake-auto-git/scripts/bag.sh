@@ -16,7 +16,7 @@ SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # extension); the publisher writes the same number into SKILL.md as metadata.version.
 BAG_VERSION="$(cat "$SKILL_DIR/VERSION" 2>/dev/null || sed -n '1,/^---$/{/^---$/d;p}' "$SKILL_DIR/SKILL.md" 2>/dev/null | sed -n '/^metadata:/,/^[^ ]/s/^  version: *["'"'"']\{0,1\}\([0-9][0-9A-Za-z.+-]*\).*/\1/p' | head -n 1)"
 BAG_VERSION="${BAG_VERSION:-0.0.0}"
-# Source of truth for this skill (private repo; Dean's GitHub account has access)
+# Source of truth for this skill (private repo; Blacklake members' GitHub accounts have access)
 SOURCE_REPO="${BAG_SRC_URL:-https://github.com/D-Tony2020/skill-hub}"
 SOURCE_PATH="skills/blacklake-auto-git"
 SOURCE_BRANCH="${BAG_SRC_BRANCH:-main}"
@@ -40,7 +40,7 @@ hist() { printf '%s\t%s\t%s\n' "$(date '+%Y-%m-%dT%H:%M:%S')" "$1" "$2" >> "$BAG
 have() { command -v "$1" >/dev/null 2>&1; }
 
 load_state() {
-  HOST=""; IP=""; FP=""; AUSER="airlock"; REPO_DIR=""; PREFIX="deans-cc/"; TARGET="main"; PAIRED_AT=""
+  HOST=""; IP=""; FP=""; AUSER="airlock"; REPO_DIR=""; PREFIX=""; TARGET="main"; PAIRED_AT=""
   # shellcheck disable=SC1090
   [ -f "$STATE" ] && . "$STATE"
 }
@@ -129,6 +129,15 @@ discover() {  # scan local /24 subnets for an ssh host whose ed25519 key == $FP
 }
 
 # ----------------------------------------------------------------- commands
+suggest_prefix() {  # a suggestion only: <git user name or email local part>-cc/
+  local n
+  n="$(git config --global user.email 2>/dev/null | sed 's/@.*//')"
+  [ -n "$n" ] || n="$(git config --global user.name 2>/dev/null)"
+  [ -n "$n" ] || n="${USER:-${USERNAME:-me}}"
+  n="$(slug "$n")"
+  echo "${n:-me}-cc/"
+}
+
 cmd_init() {
   have git || fail E_LOCAL_NO_GIT "install Git for Windows (includes Git Bash + ssh)"
   have ssh || fail E_LOCAL_NO_SSH "ssh not found; use Git Bash from Git for Windows"
@@ -140,11 +149,13 @@ cmd_init() {
   chmod 600 "$KEY" 2>/dev/null || true
   info "agent public key (embedded into the Mac installer by 'bag.sh bundle'):"
   cat "$KEY.pub"
-  ok "init"
+  ok "init suggested_prefix=$(suggest_prefix)"
 }
 
 cmd_bundle() {  # bundle --gitlab-url URL [--prefix P] [--target T] [--out DIR]
-  local url="" prefix="deans-cc/" target="main" out="$BAG_HOME/bundle"
+  # a prefix/target the user already confirmed (saved in state.env) is reused when rebuilding
+  load_state
+  local url="" prefix="$PREFIX" target="${TARGET:-main}" out="$BAG_HOME/bundle"
   while [ $# -gt 0 ]; do
     case "$1" in
       --gitlab-url) url="$2"; shift;; --prefix) prefix="$2"; shift;;
@@ -152,7 +163,10 @@ cmd_bundle() {  # bundle --gitlab-url URL [--prefix P] [--target T] [--out DIR]
     esac; shift
   done
   case "$url" in https://*|http://*) ;; *) fail E_USAGE "--gitlab-url must be the project's HTTPS clone URL";; esac
+  # The branch prefix is the user's naming choice: there is no default, the agent agrees it with the user first.
+  [ -n "$prefix" ] || fail E_USAGE "--prefix is required: agree the branch prefix with the user first (suggestion: $(suggest_prefix))"
   case "$prefix" in */) ;; *) prefix="$prefix/";; esac
+  [ "${prefix%/}" != "$target" ] || fail E_USAGE "the branch prefix must not be the target branch"
   [ -f "$KEY.pub" ] || cmd_init >/dev/null
   mkdir -p "$out"
   local f="$out/blacklake-airlock-installer.sh" pub
@@ -308,8 +322,8 @@ cmd_doctor() {
     reach; local r=$?
     case $r in
       0) printf 'CHECK %-22s OK\n' mac.ssh; sync_policy_from_mac;;
-      2) printf 'CHECK %-22s FAIL code=E_SSH_AUTH fix=%s\n' mac.ssh "Mac found but key refused: Dean re-runs installer with --add-key \"$(cat "$KEY.pub" 2>/dev/null)\""; first=E_SSH_AUTH;;
-      *) printf 'CHECK %-22s FAIL code=E_MAC_UNREACHABLE fix=%s\n' mac.ssh "ask Dean: Mac awake, on the same hotspot, Remote Login on"; first=E_MAC_UNREACHABLE;;
+      2) printf 'CHECK %-22s FAIL code=E_SSH_AUTH fix=%s\n' mac.ssh "Mac found but key refused: the airlock admin re-runs installer with --add-key \"$(cat "$KEY.pub" 2>/dev/null)\""; first=E_SSH_AUTH;;
+      *) printf 'CHECK %-22s FAIL code=E_MAC_UNREACHABLE fix=%s\n' mac.ssh "ask the airlock admin: Mac awake, on the same network (hotspot/LAN) as this machine, Remote Login on"; first=E_MAC_UNREACHABLE;;
     esac
   fi
   if [ -z "$first" ]; then
@@ -395,6 +409,8 @@ cmd_start() {  # start <topic>  -> new branch <prefix><topic> from origin/<targe
   load_state
   local d topic br; need_repo; d="$D"
   topic="$(slug "$*")"; [ -n "$topic" ] || fail E_USAGE "empty topic"
+  [ -n "$PREFIX" ] || { sync_policy_from_mac; load_state; }
+  [ -n "$PREFIX" ] || fail E_NOT_CONFIGURED "no branch prefix known yet; run bag.sh pair (it reads the prefix from the Mac)"
   br="$PREFIX$topic"
   ( cmd_sync >/dev/null ) || warn "sync failed; branching from the last fetched origin/$TARGET"
   if [ -n "$(git -C "$d" status --porcelain)" ]; then fail E_DIRTY "working tree has uncommitted changes; commit or stash first"; fi
@@ -491,15 +507,22 @@ version_lt() {  # version_lt A B -> true if semver A < B
 
 cmd_update() {  # update the skill itself from its source repo, then reinstall [--allow-downgrade]
   case "$SKILL_DIR" in */.claude/plugins/*)
-    fail E_SRC_PLUGIN "installed as a plugin: ask Dean to run /plugin marketplace update blacklake-skill-hub, then /plugin update blacklake-auto-git";;
+    fail E_SRC_PLUGIN "installed as a plugin: ask the user to run /plugin marketplace update blacklake-skill-hub, then /plugin update blacklake-auto-git";;
   esac
+  # the update channel follows the install source: only a copy installed from a source
+  # clone (install_local.sh writes SOURCE) updates from git; a SkillHub install upgrades
+  # through SkillHub so its review gate is never bypassed
+  if [ ! -f "$SKILL_DIR/SOURCE" ] && [ "${1:-}" != "--from-source" ]; then
+    fail E_SRC_HUB "installed from SkillHub (no SOURCE record): run 'skillhub upgrade blacklake-auto-git' against the team registry instead, then start a new session (bag update --from-source switches this copy to the git source)"
+  fi
+  [ "${1:-}" = "--from-source" ] && shift
   have git || fail E_LOCAL_NO_GIT "git not found"
   local src="$SOURCE_CLONE" old_commit new_commit old_air
   old_commit="$(sed -n 's/^commit=//p' "$SKILL_DIR/SOURCE" 2>/dev/null)"
   old_air="$AIRLOCK_EXPECTED"
   if [ ! -d "$src/.git" ]; then
     info "cloning $SOURCE_REPO -> $src"
-    git clone -q -b "$SOURCE_BRANCH" "$SOURCE_REPO" "$src" || fail E_SRC_CLONE "cannot clone $SOURCE_REPO (private repo: Git needs Dean's GitHub login; run 'git clone $SOURCE_REPO ~/skill-hub' once interactively)"
+    git clone -q -b "$SOURCE_BRANCH" "$SOURCE_REPO" "$src" || fail E_SRC_CLONE "cannot clone $SOURCE_REPO (private repo: Git needs the user's GitHub login; run 'git clone $SOURCE_REPO ~/skill-hub' once interactively)"
   else
     [ -z "$(git -C "$src" status --porcelain -- "$SOURCE_PATH")" ] || fail E_SRC_DIRTY "local edits in $src/$SOURCE_PATH; commit them on a branch (and open a PR) or discard them first"
     git -C "$src" fetch -q origin "$SOURCE_BRANCH" || fail E_SRC_FETCH "cannot fetch $SOURCE_REPO (network / GitHub login)"
@@ -537,7 +560,7 @@ First-time setup
   clone [dir]                          clone the repo from the airlock
 Daily work
   sync                                 refresh from GitLab (via airlock) and fetch
-  start <topic>                        new branch ${PREFIX:-deans-cc/}<topic> from origin/main
+  start <topic>                        new branch ${PREFIX:-<prefix>}<topic> from origin/${TARGET:-main}
   push [--title T] [--desc D] [--ready]
                                        push current branch -> validated -> GitLab Draft MR
   mr [branch]  |  notes [branch]       MR state / review comments (JSON)

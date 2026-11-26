@@ -1,0 +1,15 @@
+[
+  { "query": "用 blacklake-auto-git 把公司那个仓库接进来", "should_trigger": true },
+  { "query": "拉一下公司 GitLab 上最新的代码", "should_trigger": true },
+  { "query": "改好了，把改动推上去提个 MR", "should_trigger": true },
+  { "query": "看下 MR 上的评论，把能改的都改了", "should_trigger": true },
+  { "query": "气闸连不上了，Mac 好像换了 IP，帮我看看", "should_trigger": true },
+  { "query": "内网仓库推送被拒了，报 E_POLICY_PREFIX", "should_trigger": true },
+  { "query": "我在家里的电脑上，想改公司内网 GitLab 的代码", "should_trigger": true },
+  { "query": "帮我把这个 GitHub 开源项目 fork 下来提个 PR", "should_trigger": false },
+  { "query": "在本地仓库里把 feature 分支 rebase 到 main 上", "should_trigger": false },
+  { "query": "解释一下 git merge 和 git rebase 的区别", "should_trigger": false },
+  { "query": "GitLab 的 Project Access Token 一般有哪些权限范围？", "should_trigger": false },
+  { "query": "Mac 上怎么设置 VPN 开机自动连接", "should_trigger": false },
+  { "query": "把这个 skill 发布到 SkillHub", "should_trigger": false }
+]

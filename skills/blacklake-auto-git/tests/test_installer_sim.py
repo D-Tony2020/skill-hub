@@ -68,7 +68,7 @@ class InstallerSimTest(unittest.TestCase):
             out = p.stdout + p.stderr
             self.assertEqual(p.returncode, 0, out)
             for must in ("created hidden user airlock", "token stored", "authorized agent key",
-                         "sshd policy installed", "launchd job", "BAG-PAIR v=1.0.0 host=testmac.local ip=127.0.0.1"):
+                         "sshd policy installed", "launchd job", "BAG-PAIR v=1.1.0 host=testmac.local ip=127.0.0.1"):
                 self.assertIn(must, out)
             self.assertIn("first sync failed", out)  # gitlab.invalid is unreachable, handled gracefully
             # file modes / ownership
@@ -101,7 +101,7 @@ class InstallerSimTest(unittest.TestCase):
                 open(os.path.join(d, "i.txt"), "w").write("i\n")
                 sh("git add . && git commit -qm 'installer path'", cwd=d, env=env)
                 p = sh(["bash", BAG_SH, "push"], env=dict(env, FAKE_MRS=e.mrs), check=False)
-                self.assertIn("RESULT ok push branch=deans-cc/from-installer", p.stdout, p.stdout + p.stderr)
+                self.assertIn("RESULT ok push branch=zhangsan-cc/from-installer", p.stdout, p.stdout + p.stderr)
                 p = sh(["bash", BAG_SH, "doctor"], env=env, check=False)
                 self.assertIn("RESULT ok doctor", p.stdout, p.stdout)
                 # the admin's own account cannot log in through this policy (password auth off for airlock only,
@@ -110,7 +110,7 @@ class InstallerSimTest(unittest.TestCase):
                                    capture_output=True, text=True, env=env)
                 self.assertNotIn("uid=", r.stdout)
                 p = subprocess.run(["bash", inst, "--check"], env=ienv, capture_output=True, text=True, timeout=120)
-                self.assertIn('"version": "1.0.0"', p.stdout)
+                self.assertIn('"version": "1.1.0"', p.stdout)
             finally:
                 sshd.send_signal(signal.SIGTERM)
             p = subprocess.run(["bash", inst, "--uninstall"], input="y\n", env=ienv, capture_output=True, text=True)

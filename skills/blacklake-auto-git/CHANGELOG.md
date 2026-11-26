@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.0.0 - 2026-11-26
+
+可分发化（产品侧设计 loop 第 1 轮）：换一个黑湖同事、换一个项目装上就能用。**不兼容变更**见第一条。
+
+- **分支前缀改为开放槽位，没有默认值**。不再内置 `deans-cc/`：`bag init` 给出建议值 `suggested_prefix=`（取自 Git 邮箱/用户名），首次搭建时由用户确认或自定义；`bag bundle` 必须带 `--prefix`（不能等于目标分支）；Mac 安装器没拿到前缀会提示输入并校验格式；气闸配置的前缀为空时拒绝一切推送（`E_POLICY_PREFIX`）。已搭建的环境不受影响（前缀已写在 Mac 配置里，`bag start` 会从 Mac 同步）
+- 正文、参考文档、脚本提示里的人名全部换成角色：用户、审批人、气闸管理员，搭建时问清分工并 `bag learn` 记录
+- 写明适用前提：Windows + Git Bash、开发机与内网 Mac 同网（热点或局域网）、GitLab HTTPS 单项目、一期仅黑湖内部。跨网络等不满足的情况第一步就告知不适用
+- 新增 `config.schema.json`：列出全部状态位（固定/预设/实例/角色）和环境前提，说明怎么推断、问谁、存在哪
+- 更新渠道跟安装来源走：从 SkillHub 安装的副本（无 SOURCE 记录）执行 `bag update` 返回 `E_SRC_HUB` 并提示 `skillhub upgrade`，不绕过 SkillHub 审核；`--from-source` 可显式切到源码安装
+- 新增 `qa-exceptions.json`（3 条 SkillHub 扫描告警的例外理由，负责人已确认）、`evals/trigger-evals.json`（7 条该触发、6 条不该触发），行为评测新增"前缀由用户决定""跨网络不适用"两条
+- 新增测试：前缀必填、空前缀拒推、SkillHub 安装的更新渠道
+
 ## 1.1.2 - 2026-11-25
 
 - 安全修复：`serve-bundle` 和 `bundle` 给 Mac 的安装命令先用 `shasum -a 256 -c` 核对安装器，一致才 `sudo bash`。此前经热点明文 HTTP 下载后直接以 root 执行，同网段可篡改（SkillHub 安全扫描 CRITICAL）

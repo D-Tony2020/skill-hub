@@ -12,7 +12,7 @@ mkdir -p "$(dirname "$DEST")"
 rm -rf "$DEST.tmp" && mkdir -p "$DEST.tmp"
 # development files (.gitattributes, evals, tests) are copied when present; release
 # packages (claude.ai zip, SkillHub) do not ship them
-for f in .gitattributes SKILL.md VERSION CHANGELOG.md scripts references evals tests; do
+for f in .gitattributes SKILL.md VERSION CHANGELOG.md config.schema.json scripts references evals tests; do
   [ -e "$SRC/$f" ] && cp -R "$SRC/$f" "$DEST.tmp/"
 done
 # provenance: where this copy came from, so `bag.sh update` / `bag.sh version` know the source

@@ -39,11 +39,11 @@ class BagTest(unittest.TestCase):
     def test_full_cycle(self):
         d = self.clone()
         p = self.bag("start", "Fix Login Timeout!")
-        self.assertEqual(last_line(p), "RESULT ok start branch=deans-cc/fix-login-timeout")
+        self.assertEqual(last_line(p), "RESULT ok start branch=zhangsan-cc/fix-login-timeout")
         open(os.path.join(d, "a.txt"), "w").write("x\n")
         sh("git add . && git commit -qm 'fix: login timeout'", cwd=d, env=self.env)
         p = self.bag("push", "--title", "修复登录超时", "--desc", "line1\nline2")
-        self.assertIn("RESULT ok push branch=deans-cc/fix-login-timeout mr=https://gitlab.test/grp/proj/-/merge_requests/1",
+        self.assertIn("RESULT ok push branch=zhangsan-cc/fix-login-timeout mr=https://gitlab.test/grp/proj/-/merge_requests/1",
                       last_line(p))
         mr = self.e.load_mrs()[0]
         self.assertEqual(mr["title"], "Draft: 修复登录超时")
@@ -100,12 +100,12 @@ class BagTest(unittest.TestCase):
         else:
             open(os.path.join(self.bag_home, "id_ed25519.pub"), "w").write("ssh-ed25519 AAAATEST agent\n")
             open(os.path.join(self.bag_home, "id_ed25519"), "w").write("x")
-        p = self.bag("bundle", "--gitlab-url", "https://git.corp.local/grp/sub/proj.git?a=1&b=2", "--prefix", "deans-cc")
+        p = self.bag("bundle", "--gitlab-url", "https://git.corp.local/grp/sub/proj.git?a=1&b=2", "--prefix", "zhangsan-cc")
         self.assertIn("RESULT ok bundle", last_line(p))
         f = os.path.join(self.bag_home, "bundle", "blacklake-airlock-installer.sh")
         body = open(f).read()
         self.assertIn('DEF_GITLAB_URL="https://git.corp.local/grp/sub/proj.git?a=1&b=2"', body)
-        self.assertIn('DEF_PREFIX="deans-cc/"', body)
+        self.assertIn('DEF_PREFIX="zhangsan-cc/"', body)
         self.assertNotIn("__BAG_PUBKEY__", body.split("__AIRLOCK_PY_BEGIN__")[0].replace('placeholder()', ''))
         self.assertEqual(subprocess.run(["bash", "-n", f]).returncode, 0)
         # payload extraction == airlock.py
@@ -113,12 +113,30 @@ class BagTest(unittest.TestCase):
                                  capture_output=True, text=True).stdout
         self.assertEqual(payload, open(os.path.join(SKILL, "scripts", "mac", "airlock.py")).read())
 
+    def test_bundle_requires_prefix_agreed_with_user(self):
+        os.makedirs(self.bag_home, exist_ok=True)
+        open(os.path.join(self.bag_home, "id_ed25519.pub"), "w").write("ssh-ed25519 AAAATEST agent\n")
+        open(os.path.join(self.bag_home, "id_ed25519"), "w").write("x")
+        p = self.bag("bundle", "--gitlab-url", "https://git.corp.local/grp/proj.git", check=False)
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn("E_USAGE", p.stdout + p.stderr)
+        self.assertIn("suggestion:", p.stdout + p.stderr)
+        p = self.bag("bundle", "--gitlab-url", "https://git.corp.local/grp/proj.git", "--prefix", "main", check=False)
+        self.assertNotEqual(p.returncode, 0)
+        self.assertNotIn("zhangsan-cc", open(os.path.join(SKILL, "scripts", "bag.sh")).read())
+        # once confirmed, the prefix is saved and reused when the installer is rebuilt
+        p = self.bag("bundle", "--gitlab-url", "https://git.corp.local/grp/proj.git", "--prefix", "wangwu-cc")
+        p = self.bag("bundle", "--gitlab-url", "https://git.corp.local/grp/proj.git")
+        self.assertIn("RESULT ok bundle", p.stdout.strip().splitlines()[-1], p.stdout + p.stderr)
+        inst = open(os.path.join(self.bag_home, "bundle", "blacklake-airlock-installer.sh")).read()
+        self.assertIn('"wangwu-cc/"', inst)
+
     @unittest.skipUnless(shutil.which("shasum"), "needs shasum (as on macOS)")
     def test_bundle_mac_command_checks_hash_before_sudo(self):
         os.makedirs(self.bag_home, exist_ok=True)
         open(os.path.join(self.bag_home, "id_ed25519.pub"), "w").write("ssh-ed25519 AAAATEST agent\n")
         open(os.path.join(self.bag_home, "id_ed25519"), "w").write("x")
-        p = self.bag("bundle", "--gitlab-url", "https://git.corp.local/grp/proj.git")
+        p = self.bag("bundle", "--gitlab-url", "https://git.corp.local/grp/proj.git", "--prefix", "zhangsan-cc")
         line = [l for l in (p.stdout + p.stderr).splitlines() if "On the Mac run:" in l][0]
         cmd = line.split("On the Mac run:", 1)[1].strip()
         check, _, run = cmd.partition(" && sudo ")
@@ -150,7 +168,7 @@ class UpdateTest(unittest.TestCase):
         sh(["git", "clone", "-q", "--bare", work, self.remote])
         self.author = os.path.join(t, "author2")
         sh(["git", "clone", "-q", self.remote, self.author])
-        # Dean's machine: clone + install
+        # the user's machine: clone + install
         self.clone = os.path.join(t, "skill-hub")
         sh(["git", "clone", "-q", self.remote, self.clone])
         self.skills = os.path.join(t, "skills")
@@ -203,6 +221,15 @@ class UpdateTest(unittest.TestCase):
         p = self.run_bag("update")
         self.assertIn("mac_upgrade_needed=yes", last_line(p), p.stdout + p.stderr)
 
+    def test_update_from_skillhub_install_points_to_skillhub(self):
+        # a SkillHub install has no SOURCE record: updates must go through SkillHub's review gate
+        os.remove(os.path.join(self.installed, "SOURCE"))
+        p = self.run_bag("update")
+        self.assertIn("RESULT fail code=E_SRC_HUB", last_line(p), p.stdout + p.stderr)
+        self.assertIn("skillhub upgrade", last_line(p))
+        p = self.run_bag("update", "--from-source")
+        self.assertIn("RESULT ok update", last_line(p), p.stdout + p.stderr)
+
     def test_update_refuses_downgrade(self):
         # installed copy is newer than main (e.g. installed from an unmerged PR branch)
         open(os.path.join(self.installed, "VERSION"), "w").write("99.0.0\n")
@@ -243,7 +270,7 @@ class CrlfTest(unittest.TestCase):
             open(os.path.join(home, "id_ed25519"), "w").write("x")
             env = dict(os.environ, BAG_HOME=home)
             p = subprocess.run(["bash", os.path.join(skill, "scripts", "bag.sh"), "bundle", "--gitlab-url",
-                                "https://g.example/a/b.git"], env=env, capture_output=True, text=True)
+                                "https://g.example/a/b.git", "--prefix", "lisi-cc/"], env=env, capture_output=True, text=True)
             self.assertIn("RESULT ok bundle", p.stdout, p.stdout + p.stderr)
             body = open(os.path.join(home, "bundle", "blacklake-airlock-installer.sh"), "rb").read()
             self.assertNotIn(b"\r", body)

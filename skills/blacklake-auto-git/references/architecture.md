@@ -32,31 +32,31 @@
 | Mac 上的容器/VM 里跑 Claude Code + Remote Control | Mac 访问不了 Anthropic，不可行；且容器默认继承 Mac 的 VPN 路由，能访问整个内网 |
 | 开发机 SSH 进 Mac 上的沙盒，远程执行 | 沙盒同样能访问内网，需额外出口防火墙；远程执行体验差；隔离反而弱 |
 | 代码镜像到开发机，人工把补丁搬回内网 | 安全但失去 Agentic Coding 的闭环价值 |
-| **Git 气闸（本方案）** | 隔离由协议保证：Agent 只能说 git 和几条只读命令，能改的范围 = 一个仓库的 `deans-cc/*` 分支；凭据不出 Mac；工作量最小、可测试 |
+| **Git 气闸（本方案）** | 隔离由协议保证：Agent 只能说 git 和几条只读命令，能改的范围 = 一个仓库的 `<前缀>*` 分支（前缀在搭建时与用户约定）；凭据不出 Mac；工作量最小、可测试 |
 
 ## 威胁模型
 
 | 威胁 | 控制 |
 | --- | --- |
 | Agent（或被提示注入的 Agent）试图访问内网 | Windows 无内网路由；SSH 用户被 ForceCommand 锁定，无 shell/TTY/端口转发/sftp/scp；只服务一个仓库路径（真实 sshd 测试覆盖） |
-| Agent 篡改主干或他人分支 | 前缀白名单 + 受保护分支黑名单 + GitLab 侧 main 保护（建议 Dean 确认）；合并只能人工 |
+| Agent 篡改主干或他人分支 | 前缀白名单 + 受保护分支黑名单 + GitLab 侧目标分支保护（建议审批人确认）；合并只能人工 |
 | Agent 改写/删除历史 | 默认禁止非快进和删除 |
 | 凭据泄露 | 令牌只在 Mac，600 权限，只能由 airlock 用户读取；不经 argv/URL；所有输出做令牌脱敏；推送内容若含该令牌会被拦截 |
 | 推送内容在 Mac 上被执行 | 钩子是 root 所有的固定代码，不执行仓库内任何文件，不读取仓库内配置；`receive.fsckObjects=true` |
 | 连到假冒的 Mac | 主机指纹在配对时固定（StrictHostKeyChecking yes + HostKeyAlias）；IP 变化时按指纹重新发现，指纹不符直接停止 |
-| Dean 的 Mac 账户被经 SSH 暴力破解 | 远程登录仅允许 `com.apple.access_ssh` 组（安装器只加入 airlock）；airlock 仅公钥 |
-| 热点内其它设备 | 只能看到 22 端口；无密钥无法登录 |
+| 气闸管理员的 Mac 账户被经 SSH 暴力破解 | 远程登录仅允许 `com.apple.access_ssh` 组（安装器只加入 airlock）；airlock 仅公钥 |
+| 同一网络内其它设备 | 只能看到 22 端口；无密钥无法登录 |
 | 大文件/二进制拖垮 | 推送总量、单文件上限 |
 
-**未覆盖（已知边界）**：Agent 写进代码的逻辑本身的安全性依赖 Dean 的 Code Review；构建依赖来自公网（供应链风险同普通开发）；代码会发送给 Anthropic（公司已允许）。
+**未覆盖（已知边界）**：Agent 写进代码的逻辑本身的安全性依赖审批人的 Code Review；构建依赖来自公网（供应链风险同普通开发）；代码会发送给 Anthropic（公司已允许）。
 
-## 可配置项（`/usr/local/blacklake-airlock/airlock.conf.json`，Dean 用 sudo 修改）
+## 可配置项（`/usr/local/blacklake-airlock/airlock.conf.json`，气闸管理员用 sudo 修改）
 
 | 键 | 默认 | 说明 |
 | --- | --- | --- |
 | `gitlab_repo_url` | 安装时填写 | 项目 HTTPS 地址 |
 | `target_branch` | `main` | MR 目标分支 |
-| `branch_prefix` | `deans-cc/` | Agent 分支前缀 |
+| `branch_prefix` | 无（必填，搭建时与用户约定，如 `zhangsan-cc/`；为空时拒绝所有推送） | Agent 分支前缀 |
 | `protected_branches` | `main, master, develop, release/*` | 永不允许写 |
 | `mr_draft` | `true` | 新 MR 为 Draft（`--ready` 可覆盖单次） |
 | `remove_source_branch` | `true` | 合并后删除源分支 |

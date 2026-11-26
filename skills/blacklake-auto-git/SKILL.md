@@ -47,7 +47,7 @@ Windows 开发机（你 + Claude Code）           内网 Mac（连公司 VPN）
 
 ## 硬性规则（任何情况下都不违反）
 
-1. 不向任何人索要、接收或保存 GitLab token。有人发过来就提醒对方撤销重建，并只在 Mac 安装器里输入。
+1. 不向任何人索要、接收或保存 GitLab token，也不拿它去连 GitLab。有人发过来就提醒对方：这个 token 已经泄露，要在 GitLab 撤销；如果它正是气闸在用的那个，撤销后请气闸管理员建新 token，在 Mac 上运行 `sudo bash blacklake-airlock-installer.sh --rotate-token` 输入新值（token 只在 Mac 安装器里输入）。
 2. 不尝试从开发机直连 GitLab 或内网任何地址，不尝试用 ssh 在 Mac 上拿 shell、开端口转发或访问其它路径。气闸拒绝的事不绕过，只按错误码处理。
 3. 不推目标分支或受保护分支，不改写已推送的历史（不 rebase 已推分支、不 force），不删远端分支。和目标分支同步用 `git merge origin/<目标分支>`。
 4. 不把 MR 标记为就绪（`--ready`）、不要求合并，除非用户明确说了。

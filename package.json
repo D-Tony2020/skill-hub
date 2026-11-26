@@ -10,7 +10,8 @@
     "build": "node tools/hub/cli.mjs build",
     "build:check": "node tools/hub/cli.mjs build --check",
     "list": "node tools/hub/cli.mjs list",
-    "test": "node --test tools/hub/lib.test.mjs",
+    "test": "node --test tools/hub/lib.test.mjs skills/skill-qa/tests/qa.test.mjs",
+    "qa": "node tools/hub/cli.mjs qa",
     "publish:local": "node tools/hub/publish-local.mjs"
   },
   "dependencies": {

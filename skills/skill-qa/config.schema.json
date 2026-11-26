@@ -1,0 +1,29 @@
+{
+  "$comment": "skill-qa 的状态位：作者身份词、客户名脱敏词、扫描器路径。都是可选的，不配也能跑，只是 G15/G11 查得少一些。",
+  "skill": "skill-qa",
+  "schema_version": 1,
+  "onboarding": "检查别人的 Skill 前（流程第 2 步），问一次作者姓名、常用分支前缀和账号，确认后追加到 ~/.skill-qa/identity.txt；客户名脱敏词由用户自己维护在 ~/.skill-qa/redact.txt。查看和修改都直接编辑这两个文件",
+  "slots": [
+    { "key": "identity", "layer": "instance", "default": null,
+      "infer": "git config user.name / user.email、系统用户名、hub.yaml owner", "ask": true, "required": false,
+      "store": ["~/.skill-qa/identity.txt", "环境变量 SKILL_QA_IDENTITY（逗号分隔）"], "sensitive": false,
+      "desc": "G15 用来查作者身份是否写进了 Skill。检查别人的 Skill 时要补作者的名字" },
+    { "key": "auto_identity", "layer": "preset", "default": "开", "ask": false, "required": false,
+      "store": ["环境变量 SKILL_QA_NO_AUTO_IDENTITY=1 关闭"], "sensitive": false,
+      "desc": "是否自动读取本机 git 和系统用户名；CI 和测试里关闭" },
+    { "key": "redact_words", "layer": "instance", "default": null, "infer": null, "ask": false, "required": false,
+      "store": ["~/.skill-qa/redact.txt"], "sensitive": true,
+      "desc": "客户名脱敏词，一行一个，G11 用。由用户自己维护，Agent 不向外发送" },
+    { "key": "scanner_bin", "layer": "preset", "default": "skill-scanner", "ask": false, "required": false,
+      "store": ["环境变量 SKILL_SCANNER_BIN"], "sensitive": false,
+      "desc": "Cisco skill-scanner 的命令名或路径" },
+    { "key": "thresholds", "layer": "fixed", "default": "评测 80%、触发 90%、误触发 10%、评分 8/10", "ask": false,
+      "desc": "规范建议值，改阈值要改规范并升版本，不提供运行时开关" },
+    { "key": "unexceptable_gates", "layer": "fixed", "default": "G1 G2 G4–G11 G16 R1", "ask": false,
+      "desc": "密钥、评测、评分、配置清单永远不能豁免" }
+  ],
+  "env": [
+    { "key": "node", "require": "Node.js 18 及以上", "check": "node --version", "on_fail": "请用户安装 Node 18+" },
+    { "key": "scanner", "require": "推荐 pip install cisco-ai-skill-scanner", "check": "skill-scanner --help", "on_fail": "在 review.json 写 scanner.available=false，由 SkillHub 服务端扫描兜底" }
+  ]
+}

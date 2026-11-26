@@ -17,6 +17,7 @@ import {
   loadSkills, validateSkill, buildMarketplace, serializeMarketplace, packageFiles,
   importSkill, bumpSkill, installSkill, readInstalled,
 } from './lib.mjs';
+import { reportStatus, staticChecks, VERDICTS } from '../../skills/skill-qa/scripts/qa.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const MANIFEST = path.join(ROOT, '.claude-plugin', 'marketplace.json');
@@ -112,7 +113,16 @@ function importCmd(src) {
   for (const e of r.errors) console.log(`     error: ${e}`);
   for (const w of r.warnings) console.log(`     warn:  ${w}`);
   if (r.onlySkillMd) console.log('     warn:  only SKILL.md came across; if it references scripts/ or references/, the source was incomplete (claude.ai synced copies hold SKILL.md only)');
-  console.log('next: fix errors, declare requires in hub.yaml, then set status: published and open a PR');
+  const qa = reportStatus(r.dir);
+  const qaLine = {
+    missing: 'no QA_REPORT.md: run skill-qa on the full source before opening a PR',
+    unreadable: 'QA_REPORT.md was not written by skill-qa: re-run skill-qa',
+    stale: 'QA_REPORT.md does not match these files (changed after the report): re-run skill-qa report on skills/' + r.name,
+    'not-pass': `QA_REPORT.md is current but the verdict is ${qa.meta?.verdict}: fix and re-run skill-qa`,
+    pass: `QA_REPORT.md is current, verdict include (${qa.meta?.date})`,
+  }[qa.state];
+  console.log(`     qa:    ${qaLine}`);
+  console.log('next: fix errors, declare requires in hub.yaml, then set status: published and open a PR with the QA report');
   return r.errors.length ? 1 : 0;
 }
 
@@ -152,7 +162,27 @@ function statusCmd(json) {
   return 0;
 }
 
+// QA state of every skill: a current skill-qa report with verdict include, plus the static blocking gates.
+// --strict fails on anything short of that for published skills; CI runs without it for now and annotates.
+function qaCmd(strict, only) {
+  let bad = 0;
+  for (const skill of loadSkills(ROOT)) {
+    if (only && skill.dirName !== only) continue;
+    const st = reportStatus(skill.dir);
+    const res = staticChecks(skill.dir);
+    const failing = res.gates.filter((g) => g.level === 'block' && g.status === 'fail').map((g) => g.id);
+    const report = st.state === 'pass' ? 'report ok' : st.state === 'not-pass' ? `report ${VERDICTS[st.meta?.verdict]?.zh ?? st.meta?.verdict}` : `report ${st.state}`;
+    const ok = st.state === 'pass' && !failing.length;
+    console.log(`${ok ? 'ok  ' : 'warn'} ${skill.dirName.padEnd(24)} ${String(skill.status).padEnd(10)} ${report}${failing.length ? `; static gates failing: ${failing.join(', ')}` : ''}`);
+    if (!ok && process.env.GITHUB_ACTIONS) console.log(`::warning title=skill-qa ${skill.dirName}::${report}${failing.length ? `; failing ${failing.join(', ')}` : ''}`);
+    if (!ok && skill.status === 'published') bad += 1;
+  }
+  if (bad) console.log(`\n${bad} published skill(s) without a current passing skill-qa report; publish:local will refuse them.`);
+  return strict && bad ? 1 : 0;
+}
+
 const handlers = {
+  qa: () => qaCmd(args.includes('--strict'), args.find((a) => !a.startsWith('--'))),
   validate: () => validate(),
   build: () => build(args.includes('--check')),
   list: () => list(args.includes('--json')),
@@ -164,7 +194,7 @@ const handlers = {
 };
 
 if (!handlers[command]) {
-  console.error('usage: cli.mjs <validate|build [--check]|list [--json]|files <skill>|import <dir>|bump <skill> <part>|install <skill>|status>');
+  console.error('usage: cli.mjs <validate|build [--check]|list [--json]|files <skill>|import <dir>|bump <skill> <part>|install <skill>|status|qa [skill] [--strict]>');
   process.exit(2);
 }
 try {

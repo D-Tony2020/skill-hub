@@ -24,5 +24,11 @@ jobs:
         run: npm run validate
       - name: Marketplace manifest is up to date
         run: npm run build:check
+      # Advisory for now: annotates skills without a current passing skill-qa report.
+      # publish:local enforces the gate; switch to `npm run qa -- --strict` once every skill has a report.
+      - name: skill-qa reports (advisory)
+        run: npm run qa
+        env:
+          SKILL_QA_NO_AUTO_IDENTITY: '1'
       - name: Claude Code plugin validator
         run: npx -y @anthropic-ai/claude-code@latest plugin validate .

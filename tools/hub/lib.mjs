@@ -19,7 +19,8 @@ const KNOWN_FRONTMATTER = new Set([
 const KNOWN_HUB_KEYS = new Set(['version', 'status', 'owner', 'tags', 'notes', 'requires', 'source']);
 const REQUIRES_KEYS = new Set(['skills', 'commands', 'env']);
 // Files that are development material, not part of what an agent loads.
-const PACKAGE_EXCLUDES = new Set(['hub.yaml', 'tests', 'evals', '.gitattributes', '.DS_Store', '__pycache__', '.hub-source.json']);
+// QA_REPORT.md and qa-exceptions.json are review material for the repo PR; skill-qa leaves them out of the package too.
+const PACKAGE_EXCLUDES = new Set(['hub.yaml', 'tests', 'evals', '.gitattributes', '.DS_Store', '__pycache__', '.hub-source.json', 'QA_REPORT.md', 'qa-exceptions.json']);
 
 const NAME_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const SEMVER_RE = /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/;

@@ -17,11 +17,12 @@ import crypto from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
-export const QA_VERSION = '0.1.0';
+export const QA_VERSION = '0.2.0';
+export const CONFIG_SCHEMA_FILE = 'config.schema.json';
 export const REPORT_FILE = 'QA_REPORT.md';
 export const EXCEPTIONS_FILE = 'qa-exceptions.json';
 
-// Proposed thresholds from the spec; Dean has not confirmed them yet.
+// Proposed thresholds from the spec; the owner has not confirmed them yet.
 export const THRESHOLDS = { taskPass: 0.8, triggerHit: 0.9, falseTrigger: 0.1, rubricTotal: 8, minTasks: 3, minNegatives: 3, maxLines: 500 };
 
 const WALK_SKIP = new Set(['.git', 'node_modules', '__pycache__', '.DS_Store', '.venv', 'venv', '.hub-source.json', '.pytest_cache']);
@@ -234,7 +235,7 @@ function loadExceptions(dir) {
 }
 
 // Gates where a finding may be required behaviour. Secrets, evals and the rubric can never be excepted.
-const EXCEPTABLE = new Set(['G3', 'G12', 'G13', 'G14', 'S1', 'S2', 'SCAN']);
+const EXCEPTABLE = new Set(['G3', 'G12', 'G13', 'G14', 'G15', 'S1', 'S2', 'SCAN']);
 
 function excepted(exceptions, gate, finding) {
   return exceptions.find((e) => e.gate === gate
@@ -287,6 +288,116 @@ function loadRedactWords() {
     if (t) for (const w of t.split(/\r?\n/)) { const s = w.trim(); if (s && !s.startsWith('#')) words.push(s); }
   }
   return [...new Set(words)];
+}
+
+// ---------------------------------------------------------------------------
+// Personal coupling (G15): values that belong to the author, not to whoever installs the skill.
+
+const GENERIC_USERS = new Set(['root', 'runner', 'user', 'users', 'admin', 'administrator', 'ubuntu', 'claude', 'node', 'vscode',
+  'codespace', 'default', 'public', 'test', 'agent', 'airlock', 'git', 'me', 'you', 'owner', 'shared']);
+// Names that are obviously examples in docs and tests.
+const EXAMPLE_NAME = /^(?:zhangsan|lisi|wangwu|zhaoliu|alice|bob|carol|dave|john|jane|foo|bar|example|someone|your|name|xxx)/i;
+const PERSONAL_PATH_RE = /(?:[A-Za-z]:\\Users\\|\/Users\/|\/home\/)([A-Za-z0-9._-]+)/g;
+const AGENT_PREFIX_RE = /(?<![\w/.-])([a-z][a-z0-9_]*-(?:cc|agent|bot|ai|claude|codex))\/(?=[\s`'"<*)]|$|[a-z0-9])/g;
+const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g;
+const EMAIL_OK = /@(?:example\.(?:com|org|net)|x|test|localhost|anthropic\.com|users\.noreply\.github\.com)$|^(?:noreply|no-reply|t|test|user|you|someone)@/i;
+const URL_RE = /\bhttps?:\/\/\S+/g;
+
+function gitConfig(key) {
+  const r = spawnSync('git', ['config', '--get', key], { encoding: 'utf8' });
+  return r.status === 0 ? r.stdout.trim() : '';
+}
+
+// Who the author is: names that must not appear in a skill meant for someone else.
+// SKILL_QA_IDENTITY (comma separated), ~/.skill-qa/identity.txt and hub.yaml owner add names; git config
+// and the OS user are read automatically unless SKILL_QA_NO_AUTO_IDENTITY=1.
+export function identityTokens(hub = null) {
+  const out = new Set();
+  const add = (v) => {
+    for (const part of String(v ?? '').split(/[,\n]/)) {
+      const t = part.trim();
+      if (t.length >= 3 && !t.startsWith('#') && !GENERIC_USERS.has(t.toLowerCase())) out.add(t);
+    }
+  };
+  add(process.env.SKILL_QA_IDENTITY);
+  add(readText(path.join(os.homedir(), '.skill-qa', 'identity.txt')));
+  if (process.env.SKILL_QA_NO_AUTO_IDENTITY !== '1') {
+    add(gitConfig('user.name'));
+    const email = gitConfig('user.email');
+    if (email && !EMAIL_OK.test(email)) { add(email); add(email.split('@')[0]); }
+    try { add(os.userInfo().username); } catch { /* no passwd entry */ }
+  }
+  // The maintainer named in hub.yaml is repo metadata, so it is checked on every machine, CI included.
+  if (hub?.owner) add(hub.owner);
+  return [...out];
+}
+
+function tokenRegex(tok) {
+  const esc = tok.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return /^[\x00-\x7f]+$/.test(tok) ? new RegExp(`(?<![A-Za-z0-9_])${esc}(?![A-Za-z0-9_])`, 'i') : new RegExp(esc);
+}
+
+export function personalCoupling(dir, files, tokens) {
+  const hits = [];
+  const res = tokens.map((t) => [t, tokenRegex(t)]);
+  // CHANGELOG is history (who did what is fine there); everything else ships as instructions or code.
+  scanLines(dir, files.filter((r) => r !== 'CHANGELOG.md'), (file, line, raw) => {
+    const text = raw.replace(URL_RE, ' ');
+    for (const [tok, re] of res) if (re.test(text)) hits.push({ file, line, kind: 'name', text: `出现作者身份“${tok}”` });
+    for (const m of text.matchAll(PERSONAL_PATH_RE)) {
+      const who = m[1];
+      if (!GENERIC_USERS.has(who.toLowerCase()) && !EXAMPLE_NAME.test(who) && !/^[<$%{]/.test(who)) hits.push({ file, line, kind: 'path', text: `个人目录 ${m[0]}` });
+    }
+    for (const m of text.matchAll(AGENT_PREFIX_RE)) {
+      if (!EXAMPLE_NAME.test(m[1])) hits.push({ file, line, kind: 'prefix', text: `写死的个人分支前缀 ${m[1]}/` });
+    }
+    for (const m of text.matchAll(EMAIL_RE)) {
+      if (!EMAIL_OK.test(m[0]) && !EXAMPLE_NAME.test(m[0])) hits.push({ file, line, kind: 'email', text: `写死的邮箱 ${m[0]}` });
+    }
+  });
+  return hits;
+}
+
+// ---------------------------------------------------------------------------
+// Config schema (G16): every state slot is declared, layered, and has an onboarding story.
+
+export const LAYERS = ['fixed', 'preset', 'instance', 'role'];
+const STD_ENV = new Set(['HOME', 'PATH', 'USER', 'USERNAME', 'USERPROFILE', 'TMPDIR', 'TEMP', 'TMP', 'PWD', 'SHELL', 'LANG', 'LC_ALL',
+  'TERM', 'OS', 'APPDATA', 'LOCALAPPDATA', 'PROGRAMFILES', 'SYSTEMROOT', 'COMSPEC', 'HOSTNAME', 'CI', 'NODE_ENV', 'PYTHONPATH',
+  'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'SSH_AUTH_SOCK', 'EDITOR', 'IFS', 'OSTYPE', 'BASH_SOURCE', 'LINENO', 'RANDOM', 'SECONDS',
+  'HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY', 'http_proxy', 'https_proxy', 'no_proxy']);
+const ENV_USE_RE = /process\.env\.([A-Z][A-Z0-9_]{2,})|os\.environ(?:\.get\(|\[)\s*['"]([A-Z][A-Z0-9_]{2,})|\$env:([A-Z][A-Z0-9_]{2,})|\$\{([A-Z][A-Z0-9_]{2,}):[-=]/g;
+const ONBOARDING_RE = /首次(?:使用|搭建|运行|配置)|(?:问|询问|确认)(?:用户|他|她|对方)|向用户确认|first[- ]run|ask the user|配置项|onboarding/i;
+
+export function validateConfigSchema(data) {
+  const errs = [];
+  const warns = [];
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return { errs: ['不是 JSON 对象'], warns };
+  if (!Array.isArray(data.slots)) errs.push('缺少 slots 数组（没有状态位就写 "slots": []，并在 $comment 说明）');
+  const seen = new Set();
+  let asks = 0;
+  for (const [i, sl] of (Array.isArray(data.slots) ? data.slots : []).entries()) {
+    const at = `slots[${i}]${sl?.key ? `（${sl.key}）` : ''}`;
+    if (!sl || typeof sl !== 'object') { errs.push(`${at} 不是对象`); continue; }
+    if (typeof sl.key !== 'string' || !sl.key) errs.push(`${at} 缺少 key`);
+    else if (seen.has(sl.key)) errs.push(`${at} key 重复`);
+    else seen.add(sl.key);
+    if (!LAYERS.includes(sl.layer)) { errs.push(`${at} layer 必须是 ${LAYERS.join(' / ')}`); continue; }
+    if (sl.layer !== 'fixed' && typeof sl.ask !== 'boolean') errs.push(`${at} 非固定项要写 ask（true/false）`);
+    if (sl.ask === true) asks += 1;
+    // Instance values differ per person or project: shipping the author's value is exactly the coupling G15 hunts.
+    if (sl.layer === 'instance' && sl.default != null) errs.push(`${at} 实例层不能带默认值（会把作者的值带给别人），改成 infer 推断 + ask 确认`);
+    if (sl.layer === 'instance' && sl.ask !== true && !sl.infer && !sl.sensitive) errs.push(`${at} 实例层既不问也不推断，值从哪来？写 infer 或 ask: true`);
+    if (sl.sensitive === true && !sl.store) errs.push(`${at} 敏感项要写 store（存在哪；不能存在 Skill 目录里）`);
+    if (sl.sensitive === true && /SKILL\.md|\$SKILL|skill 目录|skills\//i.test(JSON.stringify(sl.store ?? ''))) errs.push(`${at} 敏感项不能存在 Skill 目录里`);
+    if (sl.layer !== 'fixed' && sl.ask !== false && !sl.store) warns.push(`${at} 没写 store（确认后存在哪、怎么改）`);
+  }
+  if (asks && !(typeof data.onboarding === 'string' && data.onboarding.trim())) errs.push('有需要问用户的项，但没写 onboarding（何时问、一次问完、确认后保存、怎么改）');
+  for (const [i, e] of (Array.isArray(data.env) ? data.env : []).entries()) {
+    if (!e?.key || !e?.require) errs.push(`env[${i}] 要有 key 和 require`);
+    else if (!e.check) warns.push(`env[${i}]（${e.key}）没写 check（怎么判断前提满足）`);
+  }
+  return { errs, warns, asks };
 }
 
 // ---------------------------------------------------------------------------
@@ -519,6 +630,42 @@ export function staticChecks(dir) {
     gates.push(withExceptions(gate('G14', '没有未知 frontmatter 字段和无扩展名文件', 'warn', 'pass'), f, exceptions, (h) => h.text));
   }
 
+  // G15 personal coupling: author names, personal paths, personal branch prefixes, emails
+  let couplingHits = [];
+  {
+    const tokens = identityTokens(s.hub);
+    couplingHits = personalCoupling(s.dir, pkg, tokens);
+    const g = withExceptions(gate('G15', '没有个人化耦合（作者姓名、个人路径、个人分支前缀、邮箱）', 'block', 'pass',
+      `按 ${tokens.length} 个作者身份词检查${tokens.length ? '' : '（没找到 git user.name，可设 SKILL_QA_IDENTITY）'}`), couplingHits, exceptions,
+      (h) => `${h.file}:${h.line} ${h.text}`);
+    if (g.findings.length) g.detail += '；改成角色称呼（用户、审批人……），或抽成状态位写进 config.schema.json、首次使用时推断并请用户确认';
+    gates.push(g);
+  }
+
+  // G16 config schema: state slots declared in four layers with onboarding
+  {
+    const cf = readJson(path.join(s.dir, CONFIG_SCHEMA_FILE));
+    if (!cf.missing) {
+      const { errs, warns, asks } = cf.error ? { errs: [`不是合法 JSON：${cf.error}`], warns: [] } : validateConfigSchema(cf.data);
+      const mentioned = (s.skillMd ?? '').includes(CONFIG_SCHEMA_FILE);
+      if (!mentioned) warns.push(`SKILL.md 没提到 ${CONFIG_SCHEMA_FILE}，Agent 不会去读它`);
+      const n = Array.isArray(cf.data?.slots) ? cf.data.slots.length : 0;
+      gates.push(gate('G16', '状态位写进 config.schema.json（固定/预设/实例/角色四层 + 首次引导）', 'block', errs.length ? 'fail' : 'pass',
+        [`${n} 个状态位，${asks ?? 0} 个需要问用户`, ...errs, ...warns.map((w) => `提示：${w}`)].join('；')));
+    } else {
+      const signals = [];
+      const envs = new Set(Array.isArray(s.requires?.env) ? s.requires.env.map(String) : []);
+      scanLines(s.dir, pkg.filter((r) => r.startsWith('scripts/')), (file, line, text) => {
+        for (const m of text.matchAll(ENV_USE_RE)) { const v = m[1] || m[2] || m[3] || m[4]; if (!STD_ENV.has(v)) envs.add(v); }
+      });
+      if (envs.size) signals.push(`读取环境变量 ${[...envs].slice(0, 8).join(', ')}${envs.size > 8 ? ' 等' : ''}`);
+      if (ONBOARDING_RE.test(s.skillMd ?? '')) signals.push('SKILL.md 有首次配置或向用户确认的步骤');
+      if (couplingHits.length) signals.push(`G15 发现 ${couplingHits.length} 处个人化耦合，它们多半应该是状态位`);
+      gates.push(gate('G16', '状态位写进 config.schema.json（固定/预设/实例/角色四层 + 首次引导）', 'block', signals.length ? 'review' : 'pass',
+        signals.length ? `没有 ${CONFIG_SCHEMA_FILE}，但有状态位迹象：${signals.join('；')}。有状态位就补清单（见 references/config-schema.md）；确实没有，在 review.json 写 stateless_confirmed: true` : '没有状态位迹象，不需要配置清单'));
+    }
+  }
+
   // S1 dangerous execution patterns
   {
     const f = [];
@@ -603,8 +750,8 @@ export function runScanner(dir, { bin = process.env.SKILL_SCANNER_BIN || 'skill-
       fs.mkdirSync(path.dirname(path.join(target, rel)), { recursive: true });
       fs.copyFileSync(path.join(s.dir, rel), path.join(target, rel));
     }
-    const win = process.platform === 'win32';
-    const res = spawnSync(bin, ['scan', target, '--format', 'json'], { encoding: 'utf8', shell: win, maxBuffer: 64 * MB });
+    // No shell: pip installs skill-scanner as a real executable on every OS, and the arguments are fixed.
+    const res = spawnSync(bin, ['scan', target, '--format', 'json'], { encoding: 'utf8', maxBuffer: 64 * MB });
     if (res.error || (res.status !== 0 && !res.stdout.trim().startsWith('{'))) {
       return { available: false, note: res.error ? `${bin} 不可用（pip install cisco-ai-skill-scanner）` : (res.stderr || '').trim().split('\n').slice(-1)[0] };
     }
@@ -651,6 +798,8 @@ export function reviewTemplate() {
     scanner: { dispositions: [{ rule: 'RULE_ID', file: 'scripts/x.sh', disposition: 'fixed | exception', note: '' }] },
     requires_confirmed: null,
     requires_note: '',
+    stateless_confirmed: null,
+    stateless_note: '只有 G16 待确认时才填：true = 确认没有状态位',
     reject_reason: null,
     notes: [],
   };
@@ -671,6 +820,13 @@ export function applyReview(result, review) {
   if (r.requires_confirmed === true) { g.G4.status = 'pass'; if (r.requires_note) g.G4.detail += `；${r.requires_note}`; }
   else if (r.requires_confirmed === false) { g.G4.status = 'fail'; g.G4.detail += `；${r.requires_note || 'Agent 判定依赖未声明全'}`; }
   else g.G4.status = 'pending';
+
+  // G16 stateless confirmation
+  if (g.G16?.status === 'review') {
+    if (r.stateless_confirmed === true) { g.G16.status = 'pass'; g.G16.detail += `；Agent 确认没有状态位${r.stateless_note ? `：${r.stateless_note}` : ''}`; }
+    else if (r.stateless_confirmed === false) { g.G16.status = 'fail'; g.G16.detail += `；Agent 确认有状态位，需补 ${CONFIG_SCHEMA_FILE}`; }
+    else g.G16.status = 'pending';
+  }
 
   // G6 task evals
   const t = ev.tasks ?? {};
@@ -741,7 +897,7 @@ export const VERDICTS = {
   include: { zh: '可分发', next: '可以导入 skill-hub 仓库（hub import），提 PR 时附上本报告。' },
   adapt: { zh: '需修改', next: '修掉下面“未通过”的阻断项后重跑 skill-qa；不要导入。' },
   hold: { zh: '暂缓', next: '还有阻断项没有结论（多半是评测没跑），补齐后重跑；不要导入。' },
-  reject: { zh: '不收录', next: '不进 Hub。原因见下；如有异议由 Dean 决定。' },
+  reject: { zh: '不收录', next: '不进 Hub。原因见下；如有异议由负责人决定。' },
 };
 
 export function verdictOf(result) {
@@ -770,7 +926,7 @@ export function renderReport(result, { date = new Date().toISOString().slice(0, 
   out.push('');
   out.push(`- 日期：${date}；skill-qa ${QA_VERSION}；评审：${r.reviewer ?? 'agent'}`);
   out.push(`- 内容哈希：\`${result.hash}\`（改动任何文件后报告即失效，需重跑）`);
-  out.push(`- 阈值为规范建议值（评测 ${pct(THRESHOLDS.taskPass)}、触发 ${pct(THRESHOLDS.triggerHit)}、误触发 ${pct(THRESHOLDS.falseTrigger)}、评分 ${THRESHOLDS.rubricTotal}/10），待 Dean 确认`);
+  out.push(`- 阈值为规范建议值（评测 ${pct(THRESHOLDS.taskPass)}、触发 ${pct(THRESHOLDS.triggerHit)}、误触发 ${pct(THRESHOLDS.falseTrigger)}、评分 ${THRESHOLDS.rubricTotal}/10），待负责人确认`);
   if (r.reject_reason) out.push(`- 不收录原因：${r.reject_reason}`);
   out.push('');
   out.push('## 门禁');
@@ -837,7 +993,7 @@ function main(argv) {
     const res = staticChecks(dir);
     res.verdict = verdictOf(res);
     if (flag('--json')) console.log(JSON.stringify(res, null, 2));
-    else console.log(`${summary(res)}\n\n静态检查结论：${VERDICTS[res.verdict].zh}（G4/G6/G7/G8/G9 需要 review.json 才能有结论）`);
+    else console.log(`${summary(res)}\n\n静态检查结论：${VERDICTS[res.verdict].zh}（G4/G6/G7/G8/G9，以及待确认的 G16，需要 review.json 才能有结论）`);
     return res.gates.some((g) => g.level === 'block' && g.status === 'fail') ? 1 : 0;
   }
   if (cmd === 'scan') {

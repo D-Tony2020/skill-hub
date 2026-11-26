@@ -151,7 +151,7 @@ class Env(object):
         # --- airlock
         shutil.copy(AIRLOCK_PY, os.path.join(self.home, "airlock.py"))
         conf = {"gitlab_repo_url": self.gitlab, "gitlab_api_base": api_base, "project_path": "grp/proj",
-                "data_dir": self.data, "target_branch": "main", "branch_prefix": "deans-cc/",
+                "data_dir": self.data, "target_branch": "main", "branch_prefix": "zhangsan-cc/",
                 "max_push_mb": 1, "max_file_mb": 0.5}
         conf.update(conf_overrides or {})
         self.conf_path = os.path.join(self.home, "airlock.conf.json")

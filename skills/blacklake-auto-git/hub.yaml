@@ -1,4 +1,6 @@
 status: published
 owner: dean
 tags: [git, gitlab, intranet]
-notes: 版本号以同目录 VERSION 文件为准
+requires:
+  commands: [git, ssh, ssh-keygen, ssh-keyscan, curl]
+notes: 版本号以同目录 VERSION 文件为准。skillhub 命令只在从 SkillHub 安装时用于更新，非必需

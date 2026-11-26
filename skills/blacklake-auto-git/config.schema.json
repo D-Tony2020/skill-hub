@@ -1,0 +1,41 @@
+{
+  "$comment": "blacklake-auto-git 的状态位清单。layer: fixed=固定（写死在代码里，不可改）/ preset=预设（有默认值，可改）/ instance=实例（每个项目或每个人都不同，必须首次确定）/ role=角色（由人担任）。env 为环境前提，不满足时第一步告知不适用。",
+  "skill": "blacklake-auto-git",
+  "schema_version": 1,
+  "onboarding": "首次搭建第 1 步：先 bag init 推断 suggested_prefix，再一条消息问完所有 ask=true 的项，用户确认后由 bag bundle 写入；之后可用 bag status 查看，改动走重新 bundle + 气闸管理员重跑安装器",
+  "slots": [
+    { "key": "gitlab_url", "layer": "instance", "default": null, "infer": null, "ask": true, "required": true,
+      "store": ["~/.blacklake-auto-git/state.env", "Mac:/usr/local/blacklake-airlock/airlock.conf.json"], "sensitive": false,
+      "desc": "GitLab 项目 HTTPS 克隆地址；只给 SSH 地址时改写成 https 并请用户确认" },
+    { "key": "branch_prefix", "layer": "instance", "default": null, "infer": "git config user.email 的 @ 前部分，否则 user.name，否则 $USER，转小写短横线后加 -cc/", "ask": true, "required": true,
+      "store": ["~/.blacklake-auto-git/state.env:PREFIX", "Mac:airlock.conf.json:branch_prefix"], "sensitive": false,
+      "desc": "开放式前置槽位：没有默认值，必须用户确认（可自定义）；以 / 结尾，不能等于目标分支；Mac 端为准，为空时气闸拒绝一切推送" },
+    { "key": "target_branch", "layer": "preset", "default": "main", "infer": null, "ask": true, "required": true,
+      "store": ["~/.blacklake-auto-git/state.env:TARGET", "Mac:airlock.conf.json"], "sensitive": false,
+      "desc": "MR 目标分支；请用户确认，常见替代 master/develop" },
+    { "key": "gitlab_token", "layer": "instance", "default": null, "infer": null, "ask": false, "required": true,
+      "store": ["Mac:airlock 用户私有文件（仅安装器写入）"], "sensitive": true,
+      "desc": "Agent 永不索要、接收、保存；只由气闸管理员在 Mac 安装器里输入" },
+    { "key": "approver", "layer": "role", "default": "用户本人", "infer": null, "ask": true, "required": false,
+      "store": ["~/.blacklake-auto-git/learnings.md"], "sensitive": false,
+      "desc": "在 GitLab 审 MR、合并的人" },
+    { "key": "airlock_admin", "layer": "role", "default": "用户本人", "infer": null, "ask": true, "required": false,
+      "store": ["~/.blacklake-auto-git/learnings.md"], "sensitive": false,
+      "desc": "内网 Mac 的主人：运行安装器、输入令牌、改气闸策略" },
+    { "key": "airlock_policy", "layer": "preset", "default": "大小上限、密钥扫描=block、受保护分支黑名单（见 references/architecture.md 可配置项）", "infer": null, "ask": false, "required": false,
+      "store": ["Mac:airlock.conf.json"], "sensitive": false,
+      "desc": "只有气闸管理员可用 sudo 改，Agent 只能建议并说明风险" },
+    { "key": "skill_source", "layer": "preset", "default": "https://github.com/D-Tony2020/skill-hub skills/blacklake-auto-git main", "infer": "副本里有 SOURCE 文件=源码安装，否则=SkillHub 安装", "ask": false, "required": false,
+      "store": ["BAG_SRC_URL / BAG_SRC_BRANCH / BAG_SRC 环境变量"], "sensitive": false,
+      "desc": "更新渠道跟安装来源走：SkillHub 安装用 skillhub upgrade，源码安装用 bag update" },
+    { "key": "airlock_user", "layer": "fixed", "default": "airlock", "ask": false, "desc": "Mac 上的专用受限账户名" },
+    { "key": "push_rules", "layer": "fixed", "default": "禁止 force push、删分支、推 tag、推目标/受保护分支", "ask": false, "desc": "安全边界，不提供配置开关" },
+    { "key": "mr_draft", "layer": "fixed", "default": "首推建 Draft MR，就绪和合并由人决定", "ask": false, "desc": "硬性规则 4" }
+  ],
+  "env": [
+    { "key": "dev_os", "require": "Windows + Git Bash（Git for Windows）", "check": "uname -s 含 MINGW/MSYS" },
+    { "key": "same_network", "require": "开发机与内网 Mac 在同一热点或局域网，开发机可 ssh 到 Mac", "check": "bag doctor 的 mac.ssh", "on_fail": "告知不适用，不做端口转发或穿透" },
+    { "key": "gitlab_https", "require": "GitLab，HTTPS + Project Access Token，单项目", "check": "用户给的克隆地址" },
+    { "key": "audience", "require": "黑湖内部团队（一期）", "check": "安装来源为团队 SkillHub 或私有源码仓库" }
+  ]
+}

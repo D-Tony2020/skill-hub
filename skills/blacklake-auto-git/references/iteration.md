@@ -16,11 +16,11 @@
 
 ## 2. Agent 行为评测（evals）
 
-`evals/evals.json` 里每条包含：`prompt`（Dean 会说的话）、`setup`（模拟环境状态）、`expectations`（可判定的行为）。评测方式：
+`evals/evals.json` 里每条包含：`prompt`（用户会说的话）、`setup`（模拟环境状态）、`expectations`（可判定的行为）。评测方式：
 
 1. 在测试机按 `setup` 构造状态（多数可用 `tests/harness.py` 的模拟环境 + `BAG_SSH` 指向 fake ssh 实现，无需真实 Mac）。
 2. 启动带本 Skill 的 Claude Code 会话，输入 `prompt`。
-3. 按 `expectations` 逐条打分（命令序列、是否违反硬性规则、给 Dean 的话是否包含可复制命令、是否 `bag learn`）。
+3. 按 `expectations` 逐条打分（命令序列、是否违反硬性规则、给用户或气闸管理员的话是否包含可复制命令、是否 `bag learn`）。
 
 重点是**安全类评测必须 100% 通过**（索要令牌、直连 GitLab、推 main、force push、擅自 `--ready`）。功能类允许个别措辞差异。可使用 anthropic-skills 的 skill-creator 评测流程批量跑并对比版本。
 
@@ -30,7 +30,7 @@
 - 两个版本号相互独立：
   - **Skill 版本**写在 `VERSION`（语义化版本），任何改动都要升，并在 `CHANGELOG.md` 加对应条目（`run_all.sh` 会检查）。
   - **Mac 端版本**是 `scripts/mac/airlock.py` 里的 `VERSION` 常量，只在 `airlock.py` 或 `install.sh` 改动时才升。
-- `bag doctor` 会比较 Mac 上实际运行的 airlock 版本和当前 Skill 附带的版本，不一致时显示 `MISMATCH`。只改了 Windows 端的版本不会要求 Dean 重装 Mac 端。
+- `bag doctor` 会比较 Mac 上实际运行的 airlock 版本和当前 Skill 附带的版本，不一致时显示 `MISMATCH`。只改了 Windows 端的版本不会要求气闸管理员重装 Mac 端。
 - 已安装副本里的 `SOURCE` 文件记录来源仓库、分支、提交号和安装时间，可以用 `bag version` 查看。
 
 **升级 Windows 端（Skill 本身）**：
@@ -39,7 +39,7 @@
 
 **升级 Mac 端**（只在 `airlock.py` 或 `install.sh` 有变化时需要）：
 1. Agent：`bag bundle --gitlab-url <原地址>`（地址见 `bag status`）。
-2. 传到 Mac（`bag serve-bundle` 或手动），Dean 执行 Agent 给的那一行（先核对 sha256 再 `sudo bash blacklake-airlock-installer.sh`）。安装器幂等：保留 airlock 用户、令牌、气闸仓库和已授权密钥，只更新代码与配置。
+2. 传到 Mac（`bag serve-bundle` 或手动），气闸管理员执行 Agent 给的那一行（先核对 sha256 再 `sudo bash blacklake-airlock-installer.sh`）。安装器幂等：保留 airlock 用户、令牌、气闸仓库和已授权密钥，只更新代码与配置。
 3. Agent：`bag doctor`，确认 `versions` 一致。
 
 ## 4. 反馈闭环（Skill 如何越用越好）
@@ -49,7 +49,7 @@
                                    │
                                    └─ 属于 Skill 缺陷/缺预案 ─▶ ~/.blacklake-auto-git/skill-feedback.md
                                                                  │
-             Dean 把反馈带回 Skills 工厂项目（或贴给 Agent）◀──────┘
+             用户把反馈带回源码仓库（提 Issue 或贴给 Agent）◀──────┘
                                    │
      复现 → 在 tests/ 加用例（先红）→ 修复 → 全量测试 → 更新 troubleshooting/SKILL → 版本号+CHANGELOG → 合并 → 各端升级
 ```

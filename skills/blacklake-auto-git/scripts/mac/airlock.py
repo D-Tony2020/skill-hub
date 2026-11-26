@@ -34,7 +34,7 @@ from urllib import parse as urlparse
 from urllib import request as urlrequest
 from urllib.error import HTTPError, URLError
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 ZERO = "0" * 40
 
 AIRLOCK_HOME = os.environ.get("AIRLOCK_HOME", "/usr/local/blacklake-airlock")
@@ -45,7 +45,7 @@ DEFAULT_CONF = {
     "gitlab_api_base": "",          # optional override, default = scheme://host of gitlab_repo_url
     "project_path": "",             # optional override, default = path of gitlab_repo_url
     "target_branch": "main",
-    "branch_prefix": "deans-cc/",
+    "branch_prefix": "",            # chosen with the user at install time, e.g. zhangsan-cc/; empty = nothing may be pushed
     "protected_branches": ["main", "master", "develop", "release/*"],
     "mr_draft": True,
     "remove_source_branch": True,
@@ -418,6 +418,9 @@ def validate_ref(conf, old, new, ref):
         return ("E_POLICY_REF", "only branches can be pushed (got %s)" % ref,
                 "push a branch named %s<topic>" % conf["branch_prefix"])
     branch = ref[len("refs/heads/"):]
+    if not conf.get("branch_prefix"):
+        return ("E_POLICY_PREFIX", "no branch prefix is configured on the airlock, so no branch may be pushed",
+                "on the Mac: sudo bash blacklake-airlock-installer.sh (it asks for the prefix agreed with the user)")
     if branch == conf["target_branch"] or fnmatch_any(branch, conf["protected_branches"]):
         return ("E_POLICY_PROTECTED", "branch %s is protected; the Agent never writes to it" % branch,
                 "create %s<topic> from origin/%s and push that" % (conf["branch_prefix"], conf["target_branch"]))
@@ -533,7 +536,7 @@ def cmd_pre_receive(conf):
                                            "then git pull --no-rebase origin %s, then push again" % branch,
                     "E_GITLAB_DNS": "Mac cannot resolve GitLab: company VPN on the Mac is probably disconnected",
                     "E_GITLAB_UNREACHABLE": "Mac cannot reach GitLab: check the Mac's VPN",
-                    "E_GITLAB_AUTH": "GitLab token on the Mac is invalid/expired: Dean must rotate it on the Mac",
+                    "E_GITLAB_AUTH": "GitLab token on the Mac is invalid/expired: the airlock admin must rotate it on the Mac (re-run the installer with --rotate-token)",
                     "E_GITLAB_FORBIDDEN": "token lacks write_repository or the role cannot push",
                     "E_GITLAB_PROTECTED": "GitLab-side branch protection/push rule refused the branch",
                     "E_GITLAB_TLS": "TLS problem talking to GitLab: see troubleshooting E_GITLAB_TLS",

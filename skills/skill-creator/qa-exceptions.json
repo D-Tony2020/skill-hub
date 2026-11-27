@@ -1,0 +1,10 @@
+[
+  {
+    "gate": "SCAN",
+    "rule": "COMMAND_INJECTION_OS_SYSTEM",
+    "file": "eval-viewer/generate_review.py",
+    "reason": "上游原样代码：_kill_port 以参数数组调用固定命令 lsof -ti :<端口>（端口是整数），只为在启动评测查看器前结束占用同一端口的旧查看器进程；不经 shell，参数不来自用户输入。镜像不改上游代码，有顾虑应提给上游",
+    "date": "2026-11-27",
+    "approved_by": "Dean"
+  }
+]

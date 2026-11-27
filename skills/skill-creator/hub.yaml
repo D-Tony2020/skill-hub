@@ -1,0 +1,13 @@
+status: published
+version: 1.0.0
+owner: dean
+tags: [skill-hub, infra, authoring, mirror]
+requires:
+  commands: [python, claude]
+upstream:
+  repo: https://github.com/anthropics/skills
+  path: skills/skill-creator
+  commit: e4bb5d960d87126ff3b3a8af1a104b7db67560ba
+  license: Apache-2.0
+  synced: 2026-11-26
+notes: 官方 skill-creator 原样镜像（只在 SKILL.md 末尾追加来源说明）。更新走 hub upstream skill-creator --from <上游克隆>/skills/skill-creator --commit <sha>；评测和描述优化脚本需要 claude CLI（claude -p）

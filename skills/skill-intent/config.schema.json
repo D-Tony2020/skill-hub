@@ -1,0 +1,22 @@
+{
+  "$comment": "skill-intent 的状态位很少：判定规则是固定的，Hub 地址沿用 hub-starter 记下的 profile。",
+  "skill": "skill-intent",
+  "schema_version": 1,
+  "onboarding": "流程第 3 步查重前：从 ~/.skill-hub/profile.json 或 SKILLHUB_REGISTRY 取 Hub 地址，取不到就跳过 Hub 查重并说明，不为查重单独发问；第 1 步确认生产者是谁（是不是用户本人）",
+  "slots": [
+    { "key": "producer", "layer": "role", "default": "用户本人", "infer": null, "ask": true, "required": true,
+      "store": ["INTENT.md:producer"], "sensitive": false,
+      "desc": "目标卡上的问题由生产者回答；用户替别人检查时问清是谁" },
+    { "key": "registry", "layer": "instance", "default": null, "infer": "~/.skill-hub/profile.json、SKILLHUB_REGISTRY、~/.skillhub/config.json", "ask": false, "required": false,
+      "store": ["~/.skill-hub/profile.json（hub-starter 写入）"], "sensitive": false,
+      "desc": "查重用的 Hub 地址；没有就只查仓库" },
+    { "key": "hub_scopes", "layer": "preset", "default": "team, org", "ask": false, "required": false,
+      "store": ["scripts/intent.mjs:HUB_SCOPES"], "sensitive": false,
+      "desc": "一期 Hub 接收的分发范围；二期上客户现场能力时加 customer 并升版本" },
+    { "key": "rules", "layer": "fixed", "default": "references/rules.md 的分发范围、收敛与驳回条件", "ask": false,
+      "desc": "判定标准不提供运行时开关，改规则走 PR 并升版本" }
+  ],
+  "env": [
+    { "key": "node", "require": "Node.js 18+", "check": "node --version", "on_fail": "不跑脚本也能对齐，但写完后要有人用 intent.mjs check 校验" }
+  ]
+}

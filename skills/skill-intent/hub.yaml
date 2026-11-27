@@ -1,0 +1,7 @@
+status: published
+version: 0.1.0
+owner: dean
+tags: [skill-hub, infra, intent]
+requires:
+  commands: [node]
+notes: 产出 INTENT.md（不进发布包），skill-qa 的 G0 分诊读它；skillhub 命令只在查重时可选使用

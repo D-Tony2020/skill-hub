@@ -8,6 +8,10 @@
 //   node tools/hub/cli.mjs bump <skill> <major|minor|patch|x.y.z> [-m note]     raise the version, open a CHANGELOG entry
 //   node tools/hub/cli.mjs install <skill> [--dest dir] [--force]               copy the release files into ~/.claude/skills
 //   node tools/hub/cli.mjs status [--dest dir] [--json]                         repo vs installed versions, missing requirements
+//   node tools/hub/cli.mjs chain [skill] [--json]                               where each skill stands in the chain: intent -> qa -> published -> suite
+//   node tools/hub/cli.mjs suite [--check] [--json]                             infra suite members vs the repo; what to enter in SkillHub's suite editor
+//   node tools/hub/cli.mjs new <name> [--owner o]                               scaffold skills/<name> (draft) with hub.yaml, CHANGELOG, evals, INTENT.md
+//   node tools/hub/cli.mjs upstream <skill> --from <dir> --commit <sha>         refresh a mirrored skill from a local upstream checkout
 import fs from 'node:fs';
 import os from 'node:os';
 import { spawnSync } from 'node:child_process';
@@ -18,6 +22,8 @@ import {
   importSkill, bumpSkill, installSkill, readInstalled,
 } from './lib.mjs';
 import { reportStatus, staticChecks, VERDICTS } from '../../skills/skill-qa/scripts/qa.mjs';
+import { readIntent, initIntent } from '../../skills/skill-intent/scripts/intent.mjs';
+import { suiteReport, syncUpstream, scaffoldSkill } from './chain.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const MANIFEST = path.join(ROOT, '.claude-plugin', 'marketplace.json');
@@ -181,7 +187,80 @@ function qaCmd(strict, only) {
   return strict && bad ? 1 : 0;
 }
 
+// One line per skill: the chain stages it has passed. Read-only.
+function chainCmd(only, json) {
+  let suite = null;
+  try { suite = suiteReport(ROOT); } catch { /* no suite file */ }
+  const members = new Set((suite?.rows ?? []).map((r) => r.skill.split('/').pop()));
+  const rows = loadSkills(ROOT).filter((s) => !only || s.dirName === only).map((s) => {
+    const intent = readIntent(s.dir);
+    const qa = reportStatus(s.dir);
+    const mirror = !!s.hub?.upstream;
+    let next;
+    if (mirror) next = qa.state === 'pass' ? 'publish (mirror)' : 'skill-qa (mirror: intent not required)';
+    else if (intent.state === 'missing') next = 'skill-intent';
+    else if (intent.state === 'invalid') next = 'fix INTENT.md (intent.mjs check)';
+    else if (intent.state !== 'aligned') next = `back to producer (${intent.state})`;
+    else if (!intent.proceed) next = `not for the Hub (scope ${intent.scope})`;
+    else if (qa.state !== 'pass') next = `skill-qa (${qa.state === 'not-pass' ? qa.meta?.verdict : qa.state})`;
+    else if (s.status !== 'published') next = 'set status: published, PR';
+    else next = 'publish:local, then approve in SkillHub';
+    return {
+      name: s.dirName, version: s.version ?? '', status: s.status,
+      intent: mirror ? 'mirror' : intent.state === 'aligned' ? `aligned/${intent.scope}${intent.bound_to ? `@${intent.bound_to}` : ''}` : intent.state,
+      qa: qa.state, suite: members.has(s.dirName), next,
+    };
+  });
+  if (json) console.log(JSON.stringify(rows, null, 2));
+  else {
+    console.log(`${'skill'.padEnd(22)} ${'version'.padEnd(8)} ${'status'.padEnd(10)} ${'intent'.padEnd(20)} ${'qa'.padEnd(9)} suite  next`);
+    for (const r of rows) console.log(`${r.name.padEnd(22)} ${r.version.padEnd(8)} ${r.status.padEnd(10)} ${r.intent.padEnd(20)} ${r.qa.padEnd(9)} ${(r.suite ? 'yes' : '-').padEnd(6)} ${r.next}`);
+  }
+  return 0;
+}
+
+function suiteCmd(check, json) {
+  const r = suiteReport(ROOT);
+  if (json) { console.log(JSON.stringify(r, null, 2)); return check && r.problems.length ? 1 : 0; }
+  console.log(`suite ${r.coordinate}@${r.version}  visibility ${r.visibility}  entry ${r.entry}`);
+  for (const row of r.rows) console.log(`  ${row.state === 'ok' || row.source === 'external' ? 'ok  ' : 'FAIL'} ${`${row.skill}@${row.version}`.padEnd(34)} ${String(row.stage ?? '').padEnd(10)} ${row.state}`);
+  if (r.problems.length) {
+    console.log(`\n${r.problems.length} problem(s):`);
+    for (const p of r.problems) console.log(`  - ${p}`);
+  } else if (!check) {
+    console.log('\nSkillHub CLI cannot publish a suite yet. After every member above is PUBLISHED in SkillHub,');
+    console.log('the Hub owner creates this suite version in the web suite editor with exactly these members and versions.');
+  }
+  return check && r.problems.length ? 1 : 0;
+}
+
+function newCmd(name) {
+  if (!name) { console.error('usage: new <name> [--owner o]'); return 2; }
+  const r = scaffoldSkill(ROOT, name, { owner: flag('--owner') ?? 'TODO' });
+  initIntent(r.dir, name);
+  console.log(`created skills/${name} (draft): ${[...r.files, 'INTENT.md'].join(', ')}`);
+  console.log('next: skill-intent fills INTENT.md with the producer; skill-creator writes SKILL.md and the evals; then skill-qa');
+  return 0;
+}
+
+function upstreamCmd(name) {
+  const from = flag('--from');
+  if (!name || !from) { console.error('usage: upstream <skill> --from <upstream skill dir> --commit <sha>'); return 2; }
+  const r = syncUpstream(ROOT, name, path.resolve(from), flag('--commit'));
+  console.log(`${name}: upstream ${r.upstream.repo} ${r.upstream.path} ${r.previous} -> ${r.commit}`);
+  console.log(`  changed: ${r.changed.length ? r.changed.join(', ') : 'none'}`);
+  if (r.removed.length) console.log(`  removed: ${r.removed.join(', ')}`);
+  console.log(r.changed.length || r.removed.length
+    ? `next: hub bump ${name} minor -m "sync upstream ${r.commit.slice(0, 7)}", re-run skill-qa, open a PR`
+    : 'nothing changed upstream; hub.yaml records the new commit only');
+  return 0;
+}
+
 const handlers = {
+  chain: () => chainCmd(args.find((a) => !a.startsWith('--')), args.includes('--json')),
+  suite: () => suiteCmd(args.includes('--check'), args.includes('--json')),
+  new: () => newCmd(args[0]),
+  upstream: () => upstreamCmd(args[0]),
   qa: () => qaCmd(args.includes('--strict'), args.find((a) => !a.startsWith('--'))),
   validate: () => validate(),
   build: () => build(args.includes('--check')),
@@ -194,7 +273,7 @@ const handlers = {
 };
 
 if (!handlers[command]) {
-  console.error('usage: cli.mjs <validate|build [--check]|list [--json]|files <skill>|import <dir>|bump <skill> <part>|install <skill>|status|qa [skill] [--strict]>');
+  console.error('usage: cli.mjs <validate|build [--check]|list [--json]|files <skill>|import <dir>|bump <skill> <part>|install <skill>|status|qa [skill] [--strict]|chain [skill]|suite [--check]|new <name>|upstream <skill> --from <dir> --commit <sha>>');
   process.exit(2);
 }
 try {

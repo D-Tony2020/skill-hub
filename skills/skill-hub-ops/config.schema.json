@@ -1,0 +1,42 @@
+{
+  "$comment": "skill-hub-ops 的状态位：仓库位置、Hub 地址、团队空间、可见范围、角色。本 Skill 绑定本 Skill Hub（bound_to: skill-hub），平台自身的值归预设层。",
+  "skill": "skill-hub-ops",
+  "schema_version": 1,
+  "onboarding": "第 0 步：从 SKILL_HUB_DIR、~/.skill-hub/profile.json（hub-starter 写入）、~/skill-hub 推断仓库目录，从 --registry、SKILLHUB_REGISTRY、profile、~/.skillhub/config.json 推断 Hub 地址；都推断不到时一条消息问仓库目录和 Hub 地址，确认后用 hub-starter 的 starter.mjs profile set 记下。发布前确认执行人是发布人",
+  "slots": [
+    { "key": "repo_dir", "layer": "instance", "default": null, "infer": "SKILL_HUB_DIR、~/.skill-hub/profile.json:repo_dir、~/skill-hub", "ask": true, "required": true,
+      "store": ["~/.skill-hub/profile.json:repo_dir", "环境变量 SKILL_HUB_DIR"], "sensitive": false,
+      "desc": "源码仓库的本地克隆；找不到就问，不自己新克隆" },
+    { "key": "registry", "layer": "instance", "default": null, "infer": "--registry、SKILLHUB_REGISTRY、~/.skill-hub/profile.json、~/.skillhub/config.json；都没有时发布脚本用 http://localhost:8088（发布人在 Hub 所在电脑上）", "ask": true, "required": true,
+      "store": ["~/.skill-hub/profile.json:registry", "环境变量 SKILLHUB_REGISTRY"], "sensitive": false,
+      "desc": "团队 Hub 地址；局域网 IP 可能变，发布脚本会打印实际使用的地址" },
+    { "key": "namespace", "layer": "preset", "default": "blacklake", "ask": false, "required": true,
+      "store": ["环境变量 SKILLHUB_NAMESPACE", "publish:local --namespace"], "sensitive": false,
+      "desc": "团队空间" },
+    { "key": "visibility", "layer": "preset", "default": "public", "ask": false, "required": false,
+      "store": ["环境变量 SKILLHUB_VISIBILITY", "publish:local --visibility"], "sensitive": false,
+      "desc": "提交时的可见范围；PUBLIC 套件只能包含 public 成员" },
+    { "key": "source_repo", "layer": "preset", "default": "https://github.com/D-Tony2020/skill-hub", "ask": false, "required": true,
+      "store": ["SKILL.md「源码、更新与反馈」", "tools/hub/lib.mjs MARKETPLACE_OWNER"], "sensitive": false,
+      "desc": "唯一源码仓库；换仓库要改市场清单和各 Skill 的来源说明" },
+    { "key": "owner", "layer": "role", "default": null, "ask": true, "required": true,
+      "store": ["各 Skill 的 hub.yaml:owner", "~/.skill-qa/qa-exceptions 的 approved_by"], "sensitive": false,
+      "desc": "负责人：合并 PR、网页审批、例外放行、建套件版本、下架" },
+    { "key": "publisher", "layer": "role", "default": "负责人", "ask": true, "required": true,
+      "store": ["无，提交前口头确认"], "sensitive": false,
+      "desc": "执行 publish:local 的人，CLI 登录用他自己的账号" },
+    { "key": "hub_credentials", "layer": "instance", "ask": false, "required": true, "sensitive": true,
+      "store": ["~/.skillhub/credentials.json（skillhub login 写入）"],
+      "desc": "设备码登录，Agent 不接触" },
+    { "key": "qa_gate", "layer": "fixed", "default": "没有有效可分发报告不提交", "ask": false,
+      "desc": "--skip-qa 须负责人书面同意" },
+    { "key": "pr_only", "layer": "fixed", "default": "分支 + PR，不直接推 main、不合并", "ask": false,
+      "desc": "铁律 2" }
+  ],
+  "env": [
+    { "key": "repo", "require": "skill-hub 源码仓库的克隆，能推分支", "check": "git -C <repo_dir> remote -v", "on_fail": "请负责人给 GitHub 写权限，或改为 fork + PR" },
+    { "key": "node", "require": "Node.js 20+、npm、git", "check": "node --version" },
+    { "key": "hub_access", "require": "发布一步需要能访问团队 Hub 且 CLI 已登录", "check": "skillhub whoami --registry <Hub 地址>", "on_fail": "只做到 PR 为止，提交交给发布人" },
+    { "key": "platform", "require": "本 Skill Hub（bound_to: skill-hub）", "check": "仓库里有 tools/hub/cli.mjs" }
+  ]
+}

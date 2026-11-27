@@ -1,0 +1,13 @@
+[
+  { "query": "帮我接入一下团队的 Skill Hub，地址管理员发我了", "should_trigger": true },
+  { "query": "我新入职，听说大家的 skill 都在 hub 上，我要怎么开始用", "should_trigger": true },
+  { "query": "换了台新电脑，skillhub 那套基建工具帮我重新装一遍", "should_trigger": true },
+  { "query": "skillhub login 一直过期，hub 连不上了，帮我看看接入状态", "should_trigger": true },
+  { "query": "把写 skill、质检、上架那些基建 skill 一次装齐", "should_trigger": true },
+  { "query": "我只是想用用同事的 skill，hub 这边要配置什么", "should_trigger": true },
+  { "query": "Hub 上有没有能画架构图的 skill？有就帮我装上", "should_trigger": false },
+  { "query": "把我写好的 arch-diagram 发布到 SkillHub", "should_trigger": false },
+  { "query": "帮我在服务器上用 docker 部署一套 SkillHub", "should_trigger": false },
+  { "query": "skill-hub 仓库的 CI 挂了，看看为什么", "should_trigger": false },
+  { "query": "这个 skill 能不能上 Hub，帮我质检", "should_trigger": false }
+]

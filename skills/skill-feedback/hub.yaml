@@ -1,0 +1,7 @@
+status: published
+version: 0.1.0
+owner: dean
+tags: [skill-hub, infra, feedback]
+requires:
+  commands: [node]
+notes: 基建套件第 6 步。只生成草稿和预填链接，不联网、不代发（除非用户明确要求且有 GitHub 工具）

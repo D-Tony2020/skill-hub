@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Publish every `published` skill in this repo to a self-hosted SkillHub (phase 1: localhost).
+// Publish every `published` skill in this repo to a self-hosted SkillHub (phase 1: the Hub machine on the LAN).
 //
 //   npm run publish:local -- [--dry-run] [--skill <name>] [--force] [--skip-qa "<reason>"]
 //                            [--registry <url>] [--namespace <slug>] [--visibility public|namespace-only|private]
@@ -25,9 +25,25 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 const STATE_FILE = path.join(ROOT, '.hub-state.json');
 const VISIBILITIES = ['public', 'namespace-only', 'private'];
 
+// Registry precedence: --registry, SKILLHUB_REGISTRY, the Hub recorded by hub-starter
+// (~/.skill-hub/profile.json), the SkillHub CLI's own config, then the phase-1 default:
+// this script normally runs on the machine that hosts the Hub. Never the CLI's public default.
+function defaultRegistry() {
+  const read = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; } };
+  const candidates = [
+    ['SKILLHUB_REGISTRY', process.env.SKILLHUB_REGISTRY],
+    ['~/.skill-hub/profile.json', read(path.join(os.homedir(), '.skill-hub', 'profile.json'))?.registry],
+    ['~/.skillhub/config.json', read(path.join(os.homedir(), '.skillhub', 'config.json'))?.registry],
+  ];
+  for (const [source, value] of candidates) if (value) return { registry: value, source };
+  return { registry: 'http://localhost:8088', source: 'phase-1 default (Hub on this machine)' };
+}
+
 function parseArgs(argv) {
+  const def = defaultRegistry();
   const opts = {
-    registry: process.env.SKILLHUB_REGISTRY || 'http://localhost:8088',
+    registry: def.registry,
+    registrySource: def.source,
     namespace: process.env.SKILLHUB_NAMESPACE || 'blacklake',
     visibility: process.env.SKILLHUB_VISIBILITY || 'public',
     skill: null, dryRun: false, force: false, skipQa: null,
@@ -40,7 +56,7 @@ function parseArgs(argv) {
       i += 1;
       return v;
     };
-    if (a === '--registry') opts.registry = next();
+    if (a === '--registry') { opts.registry = next(); opts.registrySource = '--registry'; }
     else if (a === '--namespace') opts.namespace = next();
     else if (a === '--visibility') opts.visibility = next();
     else if (a === '--skill') opts.skill = next();
@@ -86,6 +102,7 @@ function readState() {
 function main() {
   const opts = parseArgs(process.argv.slice(2));
   const reg = ['--registry', opts.registry];
+  console.log(`registry ${opts.registry} (from ${opts.registrySource}), namespace ${opts.namespace}`);
 
   const who = skillhub(['whoami', ...reg]);
   if (who.code !== 0) {

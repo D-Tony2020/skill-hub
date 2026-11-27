@@ -22,16 +22,74 @@
       ]
     },
     {
-      "name": "skill-hub-ops",
-      "source": "./skills/skill-hub-ops",
-      "description": "运维 Skills 工厂的 Skill Hub：把存量 skill 导入 skill-hub 仓库、改版本、发版、发布到 SkillHub 看板、安装到本机、下架和巡检。用户说\"把这个 skill 放进 Hub / 上架 / 发布 / 升级版本 / 装到我电脑 / 下架 / 看看各端版本\"，或提到 skill-hub、SkillHub、技能看板、blacklake-skill-hub 时使用。",
+      "name": "hub-starter",
+      "source": "./skills/hub-starter",
+      "description": "把一个人接入团队的 Skill Hub（SkillHub）：装好 SkillHub CLI、用设备码登录、一次装齐基建套件（写 Skill、意图对齐、质检、上架、安装、反馈的全套工具），按角色补齐作者要的仓库和 Git 配置，最后自检。用户说\"帮我接入 Skill Hub\"\"我是新来的，怎么用 Hub\"\"装一下基建 Skill\"\"配置 skillhub\"\"Hub 连不上 / 登录过期了\"\"换了电脑重新接入\"，或第一次提到团队 Skill Hub、技能看板时使用。它是 Skill Hub 生命周期的第 0 步；已接入后要找或装某个具体 Skill，用 skillhub-cli；要发布或运维 Hub，用 skill-hub-ops。",
       "version": "0.1.0",
       "skills": [
         "."
       ],
       "keywords": [
         "skill-hub",
+        "infra",
+        "onboarding"
+      ]
+    },
+    {
+      "name": "skill-creator",
+      "source": "./skills/skill-creator",
+      "description": "Create new skills, modify and improve existing skills, and measure skill performance. Use when users want to create a skill from scratch, edit, or optimize an existing skill, run evals to test a skill, benchmark skill performance with variance analysis, or optimize a skill's description for better triggering accuracy.",
+      "version": "1.0.0",
+      "skills": [
+        "."
+      ],
+      "keywords": [
+        "skill-hub",
+        "infra",
+        "authoring",
+        "mirror"
+      ]
+    },
+    {
+      "name": "skill-feedback",
+      "source": "./skills/skill-feedback",
+      "description": "用某个 Skill 时遇到问题，帮用户把它整理成一条能直接处理的反馈，送回这个 Skill 的源码仓库：先找到装的是哪个版本、从哪装的、源码在哪，判断是 Skill 的问题还是本机环境的问题，写出脱敏后的 issue 草稿（现象、期望、最小复现、环境），给用户看过后生成一键提交链接。用户说\"这个 skill 有 bug / 不好用 / 帮我反馈一下\"\"skill 该用的时候没用上\"\"它不该出来的时候冒出来了\"\"给 XX skill 提个建议\"\"这个 skill 的文档看不懂\"时使用，也用于使用者对 Hub 上任何 Skill 的问题回报。不用于修复 Skill 本身（作者用 skill-creator 改、用 skill-hub-ops 发版），也不用于排查与 Skill 无关的报错。",
+      "version": "0.1.0",
+      "skills": [
+        "."
+      ],
+      "keywords": [
+        "skill-hub",
+        "infra",
+        "feedback"
+      ]
+    },
+    {
+      "name": "skill-hub-ops",
+      "source": "./skills/skill-hub-ops",
+      "description": "运维团队的 Skill Hub（skill-hub 源码仓库 + SkillHub 看板）：新建 Skill 骨架、把存量 Skill 导入仓库、升版本、发版、提交到 SkillHub 并跟进扫描与审批、维护基建套件、同步官方镜像、回滚、下架、处理使用者反馈的 issue、巡检各端版本。用户说\"把这个 skill 放进 Hub / 上架 / 发布 / 发新版 / 升级版本 / 回滚 / 下架 / 套件更新一下 / 同步一下官方 skill-creator / 看看 Hub 上的 issue / 看看各个 skill 走到哪一步了\"，或提到 skill-hub 仓库、SkillHub、技能看板、blacklake-skill-hub 时使用。不用于质检（用 skill-qa）、对齐目标（用 skill-intent）、新人接入（用 hub-starter），也不用于使用者自己安装某个 Skill（用 skillhub-cli）。",
+      "version": "0.2.0",
+      "skills": [
+        "."
+      ],
+      "keywords": [
+        "skill-hub",
+        "infra",
         "ops"
+      ]
+    },
+    {
+      "name": "skill-intent",
+      "source": "./skills/skill-intent",
+      "description": "在质检和上架之前，先和 Skill 的生产者对齐这个 Skill 到底要做什么：起草一张目标卡（给谁用、解决什么、在哪些说法下触发、不做什么、成功标准、分发范围），查 Hub 和仓库里有没有重复的 Skill，把发散的目标收敛成一个，然后给出\"已对齐 / 需澄清 / 驳回\"的结论，写成 Skill 根目录的 INTENT.md，供 skill-qa 分诊和写评测用。用户说\"这个 skill 想给团队用，先对齐一下目标\"\"帮我理一下这个 skill 该做什么\"\"这个想法值不值得做成 skill\"\"上 Hub 前先过意图\"\"Hub 里有没有和它重复的\"，或者准备把一个 Skill 交给 skill-qa、而它还没有 INTENT.md 时使用。不用于检查结构和安全（用 skill-qa），也不用于动手写 Skill（用 skill-creator）。",
+      "version": "0.1.0",
+      "skills": [
+        "."
+      ],
+      "keywords": [
+        "skill-hub",
+        "infra",
+        "intent"
       ]
     }
   ]

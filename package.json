@@ -10,9 +10,11 @@
     "build": "node tools/hub/cli.mjs build",
     "build:check": "node tools/hub/cli.mjs build --check",
     "list": "node tools/hub/cli.mjs list",
-    "test": "node --test tools/hub/lib.test.mjs skills/skill-qa/tests/qa.test.mjs",
+    "test": "node --test tools/hub/lib.test.mjs tools/hub/chain.test.mjs skills/skill-qa/tests/qa.test.mjs skills/hub-starter/tests/starter.test.mjs skills/skill-intent/tests/intent.test.mjs skills/skill-feedback/tests/feedback.test.mjs",
     "qa": "node tools/hub/cli.mjs qa",
-    "publish:local": "node tools/hub/publish-local.mjs"
+    "publish:local": "node tools/hub/publish-local.mjs",
+    "chain": "node tools/hub/cli.mjs chain",
+    "suite": "node tools/hub/cli.mjs suite"
   },
   "dependencies": {
     "yaml": "2.6.1"

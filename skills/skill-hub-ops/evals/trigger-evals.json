@@ -1,0 +1,14 @@
+[
+  { "query": "把 po-helper 放进 Hub，帮我开 PR", "should_trigger": true },
+  { "query": "skill-qa 0.3.0 合并了，提交到 SkillHub 吧", "should_trigger": true },
+  { "query": "看看现在各个 skill 走到哪一步了，哪些还没上架", "should_trigger": true },
+  { "query": "基建套件更新一下，skill-feedback 发新版了", "should_trigger": true },
+  { "query": "官方 skill-creator 更新了，同步一下镜像", "should_trigger": true },
+  { "query": "hub-starter 新版有问题，回滚", "should_trigger": true },
+  { "query": "Hub 上有几个 issue，帮我分诊一下", "should_trigger": true },
+  { "query": "这个 skill 能不能上 Hub？帮我质检", "should_trigger": false },
+  { "query": "帮我接入一下团队的 Skill Hub", "should_trigger": false },
+  { "query": "Hub 上有没有写周报的 skill，帮我装一个", "should_trigger": false },
+  { "query": "帮我在新服务器上用 docker compose 部署 SkillHub", "should_trigger": false },
+  { "query": "这个 skill 有 bug，帮我反馈给作者", "should_trigger": false }
+]

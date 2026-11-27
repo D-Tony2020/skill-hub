@@ -1,0 +1,41 @@
+{
+  "$comment": "hub-starter 的状态位：Hub 地址、角色、Agent、源码仓库目录。都存在 ~/.skill-hub/profile.json，由 starter.mjs profile set 在用户确认后写入；其他基建 Skill 读同一个文件。",
+  "skill": "hub-starter",
+  "schema_version": 1,
+  "onboarding": "流程第 1 步：先 starter.mjs doctor 推断 Hub 地址（SKILLHUB_REGISTRY、~/.skillhub/config.json、profile），一条消息问完 Hub 地址、角色（和必要时的 Agent），用户确认后 starter.mjs profile set 写入；之后 starter.mjs profile show 查看，profile set 修改",
+  "slots": [
+    { "key": "registry", "layer": "instance", "default": null,
+      "infer": "SKILLHUB_REGISTRY、~/.skillhub/config.json 的 registry、~/.skill-hub/profile.json", "ask": true, "required": true,
+      "store": ["~/.skill-hub/profile.json:registry", "~/.skillhub/config.json（skillhub login 写入）"], "sensitive": false,
+      "desc": "团队 Hub 地址，由 Hub 管理员提供。没有默认值，绝不落到 SkillHub CLI 的公网默认地址；局域网 IP 可能变，变了就重新问" },
+    { "key": "role", "layer": "role", "default": null, "infer": null, "ask": true, "required": true,
+      "store": ["~/.skill-hub/profile.json:role"], "sensitive": false,
+      "desc": "author（写 Skill、上架）/ user（只装来用）/ admin（维护 Hub、审批）。决定装哪些套件成员、要不要配 Git 和源码仓库" },
+    { "key": "agent", "layer": "preset", "default": "claude-code", "infer": "当前所在的 Agent", "ask": false, "required": false,
+      "store": ["~/.skill-hub/profile.json:agent"], "sensitive": false,
+      "desc": "skillhub install 的 --agent；用户同时用多个 Agent 时才问" },
+    { "key": "install_scope", "layer": "preset", "default": "user", "ask": false, "required": false,
+      "store": ["starter.mjs plan --scope"], "sensitive": false,
+      "desc": "基建是个人工具，默认装到用户级；只在项目里用时改 project" },
+    { "key": "namespace", "layer": "preset", "default": "blacklake", "ask": false, "required": false,
+      "store": ["assets/infra-suite.json:metadata.namespace", "~/.skill-hub/profile.json:namespace"], "sensitive": false,
+      "desc": "团队空间；换团队部署时改套件定义并发新版" },
+    { "key": "repo_url", "layer": "preset", "default": "https://github.com/D-Tony2020/skill-hub", "ask": false, "required": false,
+      "store": ["~/.skill-hub/profile.json:repo_url"], "sensitive": false,
+      "desc": "Skill 源码仓库，作者通过 PR 提交" },
+    { "key": "repo_dir", "layer": "instance", "default": null, "infer": "已有的克隆（~/skill-hub、SKILL_HUB_DIR）", "ask": true, "required": false,
+      "store": ["~/.skill-hub/profile.json:repo_dir"], "sensitive": false,
+      "desc": "作者本机的源码仓库目录；只有作者和管理员需要" },
+    { "key": "hub_credentials", "layer": "instance", "ask": false, "required": true, "sensitive": true,
+      "store": ["~/.skillhub/credentials.json（skillhub login 设备码流程写入）"],
+      "desc": "用户在浏览器里确认设备码，Agent 不接触密码和令牌" },
+    { "key": "public_default_forbidden", "layer": "fixed", "default": "不使用 CLI 的公网默认 Hub", "ask": false,
+      "desc": "团队 Skill 的搜索和安装不发往公网服务" }
+  ],
+  "env": [
+    { "key": "shell_agent", "require": "Agent 能在用户电脑上运行命令", "check": "能执行 node --version", "on_fail": "改走 claude.ai 上传 Release zip 的方式" },
+    { "key": "node", "require": "Node.js 18+", "check": "starter.mjs doctor 的 node 一行", "on_fail": "请用户安装 Node.js" },
+    { "key": "hub_network", "require": "能访问团队 Hub", "check": "starter.mjs doctor 的 login 一行（连不上 Hub 会单独报）", "on_fail": "确认网络和地址，问 Hub 管理员" },
+    { "key": "audience", "require": "黑湖内部成员（一期）", "check": "有团队 Hub 账号" }
+  ]
+}

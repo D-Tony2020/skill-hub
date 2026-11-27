@@ -1,0 +1,12 @@
+[
+  { "query": "这个 skill 想给整个 FDE 团队用，上架前先帮我对齐一下目标", "should_trigger": true },
+  { "query": "我有个想法：做个 skill 自动把客户的 BOM 表转成我们的导入模板，值不值得做？", "should_trigger": true },
+  { "query": "帮我理一下 ~/work/po-helper 这个 skill 到底该干嘛，感觉写乱了", "should_trigger": true },
+  { "query": "Hub 里有没有和我这个排产助手重复的 skill？没有的话出个目标卡", "should_trigger": true },
+  { "query": "交给质检之前先把这个 skill 的意图和分发范围定下来", "should_trigger": true },
+  { "query": "这个 skill 能不能上 Hub？跑一下门禁和安全扫描", "should_trigger": false },
+  { "query": "帮我从零写一个处理飞书审批的 skill", "should_trigger": false },
+  { "query": "把 po-helper 导入 skill-hub 仓库并提 PR", "should_trigger": false },
+  { "query": "帮我写一份 MES 项目的需求对齐会议纪要", "should_trigger": false },
+  { "query": "优化一下这个 skill 的 description，让它更容易被触发", "should_trigger": false }
+]

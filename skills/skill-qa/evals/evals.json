@@ -56,7 +56,7 @@
       "setup": "skill-creator not run",
       "expectations": [
         "refuses to invent eval numbers",
-        "leaves the eval fields empty and explains the verdict will be 暂缓"
+        "leaves the eval fields empty and explains that evals are optional, so the verdict is decided by the static checks alone"
       ]
     }
   ]

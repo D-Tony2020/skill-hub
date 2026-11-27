@@ -11,7 +11,7 @@
       "name": "blacklake-auto-git",
       "source": "./skills/blacklake-auto-git",
       "description": "通过内网 Mac 上的 Git 气闸（airlock）对公司内网 GitLab 的单个仓库做 Agentic Coding：拉代码、开 Agent 专用分支、推送并自动建 Draft MR、读 MR 评论迭代，以及首次搭建、自检和故障自愈。用户提到 blacklake-auto-git、内网仓库/公司 GitLab、气闸、提 MR、\"拉一下最新代码\"、\"把改动推上去\"，或在不在内网的开发机上改公司 GitLab 代码时使用。",
-      "version": "2.0.0",
+      "version": "2.0.1",
       "skills": [
         "."
       ],

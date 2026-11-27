@@ -3,7 +3,7 @@
 **结论：可分发**（SkillHub 分级：include）。可以导入 skill-hub 仓库（hub import），提 PR 时附上本报告。
 
 - 日期：2026-11-27；skill-qa 0.2.1；评审：agent
-- 内容哈希：`0c0e72237b7da41c5982aa24641f9daa6386d8af55819a21ee670a317cd1454a`（改动任何文件后报告即失效，需重跑）
+- 内容哈希：`89c49487b40aeaf1b4544f7625e29f1d116c09f021dcfab1da4a5f10cd005cc4`（改动任何文件后报告即失效，需重跑）
 - 阈值为规范建议值（评测 80%、触发 90%、误触发 10%、评分 8/10），待负责人确认
 
 ## 门禁
@@ -18,7 +18,7 @@
 | G6 | （可选）任务评测通过率 ≥ 80%，且不低于不装 Skill 的基线 | 提示 | 可选未跑 | 默认不跑；需要时用 skill-creator 跑并写进 review.json |
 | G7 | （可选）触发评测：该触发的 ≥ 90%，误触发 ≤ 10% | 提示 | 可选未跑 | 默认不跑；需要时用 skill-creator 跑并写进 review.json |
 | G8 | 评分表总分 ≥ 8/10，且“安全”不为 0 | 阻断 | 通过 | 9/10（触发 2，可执行 2，确定性 2，安全 2，可移植 1） |
-| G9 | 打包副本自包含（SKILL.md 引用的文件都在打包里） | 阻断 | 通过 | 打包 16 个文件，引用完整；VERSION 没有扩展名，SkillHub 打包会去掉，而脚本或 SKILL.md 读取了它：冒烟必须在去掉这些文件的副本上跑，确认有回退（不允许靠删文件过关）；Agent 读代码确认有回退后在 review.json 写 evals.smoke.ok=true；读代码确认：VERSION 文件没有被脚本读取（diagram.py 的 VERSION 是代码内常量）。并按 tools/hub/cli.mjs files 的打包清单去掉无扩展名文件（VERSION）和 .gitignore 后拷到临时目录，在副本上真实跑通 doctor → new smoke → round（check 通过、导出 PNG/SVG、快照 r01） |
+| G9 | 打包副本自包含（SKILL.md 引用的文件都在打包里） | 阻断 | 通过 | 打包 15 个文件，引用完整；VERSION 没有扩展名，SkillHub 打包会去掉，而脚本或 SKILL.md 读取了它：冒烟必须在去掉这些文件的副本上跑，确认有回退（不允许靠删文件过关）；Agent 读代码确认有回退后在 review.json 写 evals.smoke.ok=true；读代码确认：VERSION 文件没有被脚本读取（diagram.py 的 VERSION 是代码内常量）。并按 tools/hub/cli.mjs files 的打包清单去掉无扩展名文件（VERSION）和 .gitignore 后拷到临时目录，在副本上真实跑通 doctor → new smoke → round（check 通过、导出 PNG/SVG、快照 r01） |
 | G10 | 本版本的 CHANGELOG 条目写了实际内容 | 阻断 | 通过 |  |
 | G11 | 不含密钥、内网地址、客户名 | 阻断 | 通过 | 未配置客户名脱敏词（~/.skill-qa/redact.txt） |
 | G12 | 脚本有单元测试 | 警告 | 通过 | 6 个脚本，33 个测试文件 |
@@ -27,7 +27,7 @@
 | G15 | 没有个人化耦合（作者姓名、个人路径、个人分支前缀、邮箱） | 阻断 | 通过 | 按 5 个作者身份词检查 |
 | G16 | 状态位写进 config.schema.json（固定/预设/实例/角色四层 + 首次引导） | 阻断 | 通过 | 16 个状态位，1 个需要问用户 |
 | S1 | 没有“下载即执行”、高危删除等危险操作 | 阻断 | 通过 |  |
-| S2 | 包体积与目录限制（单文件 ≤ 10 MB，总计 ≤ 100 MB，无顶层 bin/） | 阻断 | 通过 | 16 个文件，176 KB |
+| S2 | 包体积与目录限制（单文件 ≤ 10 MB，总计 ≤ 100 MB，无顶层 bin/） | 阻断 | 通过 | 15 个文件，177 KB |
 | S4 | 安全扫描器（与 SkillHub 同款）的每条告警都已处置：修复，或登记为例外 | 阻断 | 通过 | cisco skill-scanner (default policy)：SAFE 共 0 条，MEDIUM 及以上 0 条 |
 | R1 | SKILL.md 写明源码仓库，以及更新和反馈问题的方式 | 阻断 | 通过 |  |
 | S3 | 写明 license（SkillHub 扫描会提示） | 提示 | 通过 |  |
@@ -47,4 +47,4 @@
 - 评测（G5–G7）按 skill-qa 0.2.1 为可选，未跑；用例已按目标卡写好放在 evals/，需要时可补跑
 - 目标卡按交接文档第 3 版放在 ~/.skill-qa/work/arch-diagram-INTENT.md（PR #15 合并前不进 Skill 目录）；Skill 内另有 references/intent.md 作为说明文档
 
-<!-- skill-qa {"qa_version":"0.2.1","name":"arch-diagram","version":"2.1.3","verdict":"include","hash":"0c0e72237b7da41c5982aa24641f9daa6386d8af55819a21ee670a317cd1454a","date":"2026-11-27"} -->
+<!-- skill-qa {"qa_version":"0.2.1","name":"arch-diagram","version":"2.1.3","verdict":"include","hash":"89c49487b40aeaf1b4544f7625e29f1d116c09f021dcfab1da4a5f10cd005cc4","date":"2026-11-27"} -->

@@ -11,6 +11,7 @@
 - 新增 `config.schema.json`（状态位四层清单与环境前提）、`references/intent.md`（目标卡，范围 team）、`evals/`（任务与触发评测用例）
 - SKILL.md 新增「源码、更新与反馈」一节，frontmatter 加 license；hub.yaml 声明 requires（drawio-skill、python、draw.io；lark-cli 可选，写在 notes）
 - 新增测试：同级 drawio-skill 查找、doctor 缺依赖时的输出
+- 去掉 Skill 目录里的 .gitignore（SkillHub 不允许该扩展名，内容已被仓库根目录的 .gitignore 覆盖）
 
 ## 2.1.2 之前
 

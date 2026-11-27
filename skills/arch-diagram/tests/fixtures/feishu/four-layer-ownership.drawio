@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="arch-diagram">
+  <diagram id="page-1" name="总览">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="四层归属 v0.4" style="text;html=1;fontSize=16;fontStyle=1;fontFamily=Arial;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="560" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="l4" value="L4 客户实例｜实施 FDE、客户 IT 改｜一家客户一份" style="swimlane;startSize=28;collapsible=0;rounded=0;html=1;whiteSpace=wrap;fillColor=#fafafa;strokeColor=#90a4ae;fontStyle=1;fontFamily=Arial;fontSize=13;align=left;spacingLeft=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="1040" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="customer-config" value="&lt;b&gt;客户配置&lt;/b&gt;&lt;br&gt;组织权限、阈值、专属 SOP、IM/OA 选型" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e0f2f1;strokeColor=#00796b;fontFamily=Arial;fontSize=12;" vertex="1" parent="l4">
+          <mxGeometry x="40" y="50" width="240" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="customer-adapter" value="&lt;b&gt;客户适配器&lt;/b&gt;&lt;br&gt;FDE 写：域外系统适配器、采集落地表" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e0f2f1;strokeColor=#00796b;fontFamily=Arial;fontSize=12;" vertex="1" parent="l4">
+          <mxGeometry x="760" y="50" width="240" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="l3" value="L3 场景包｜场景负责人改｜一个场景一份" style="swimlane;startSize=28;collapsible=0;rounded=0;html=1;whiteSpace=wrap;fillColor=#fafafa;strokeColor=#90a4ae;fontStyle=1;fontFamily=Arial;fontSize=13;align=left;spacingLeft=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="300" width="1040" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="scenario-pack" value="&lt;b&gt;场景包（Agent 预设）&lt;/b&gt;&lt;br&gt;任务契约、编排 SOP、工具选用、审批点、考卷" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1565c0;fontFamily=Arial;fontSize=12;" vertex="1" parent="l3">
+          <mxGeometry x="400" y="50" width="240" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="l2" value="L2 域资产｜研发改｜跨场景共用" style="swimlane;startSize=28;collapsible=0;rounded=0;html=1;whiteSpace=wrap;fillColor=#fafafa;strokeColor=#90a4ae;fontStyle=1;fontFamily=Arial;fontSize=13;align=left;spacingLeft=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="520" width="1040" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="shared" value="&lt;b&gt;共用件&lt;/b&gt;&lt;br&gt;通用 Skill、通用交互组件" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e0f2f1;strokeColor=#00796b;fontFamily=Arial;fontSize=12;" vertex="1" parent="l2">
+          <mxGeometry x="40" y="50" width="240" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="contract" value="&lt;b&gt;契约&lt;/b&gt;&lt;br&gt;本体对象、工具接口、口径、契约测试" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e0f2f1;strokeColor=#00796b;fontFamily=Arial;fontSize=12;" vertex="1" parent="l2">
+          <mxGeometry x="400" y="50" width="240" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="std-impl" value="&lt;b&gt;标准实现&lt;/b&gt;&lt;br&gt;黑湖连接器（默认）、下沉来的外部适配器" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e0f2f1;strokeColor=#00796b;fontFamily=Arial;fontSize=12;" vertex="1" parent="l2">
+          <mxGeometry x="760" y="50" width="240" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="l1" value="L1 基座｜平台团队改｜全局唯一" style="swimlane;startSize=28;collapsible=0;rounded=0;html=1;whiteSpace=wrap;fillColor=#fafafa;strokeColor=#90a4ae;fontStyle=1;fontFamily=Arial;fontSize=13;align=left;spacingLeft=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="740" width="1040" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="runtime" value="&lt;b&gt;DSH 运行时&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e0f2f1;strokeColor=#00796b;fontFamily=Arial;fontSize=12;" vertex="1" parent="l1">
+          <mxGeometry x="40" y="50" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="governance" value="&lt;b&gt;治理机制&lt;/b&gt;&lt;br&gt;身份分权、审批、审计" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#6a1b9a;fontFamily=Arial;fontSize=12;" vertex="1" parent="l1">
+          <mxGeometry x="300" y="50" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="platform-services" value="&lt;b&gt;平台服务&lt;/b&gt;&lt;br&gt;触发调度、评测框架、记忆服务" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e0f2f1;strokeColor=#00796b;fontFamily=Arial;fontSize=12;" vertex="1" parent="l1">
+          <mxGeometry x="560" y="50" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="im-oa" value="&lt;b&gt;IM 与 OA 适配器&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e0f2f1;strokeColor=#00796b;fontFamily=Arial;fontSize=12;" vertex="1" parent="l1">
+          <mxGeometry x="800" y="50" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ext-customer" value="&lt;b&gt;客户域外系统&lt;/b&gt;&lt;br&gt;金蝶、用友、Excel 等" style="rounded=1;arcSize=12;dashed=1;whiteSpace=wrap;html=1;fillColor=#eceff1;strokeColor=#455a64;fontFamily=Arial;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="130" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ext-blacklake" value="&lt;b&gt;黑湖 MES / ERP&lt;/b&gt;" style="rounded=1;arcSize=12;dashed=1;whiteSpace=wrap;html=1;fillColor=#eceff1;strokeColor=#455a64;fontFamily=Arial;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="570" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="note-rules" value="&lt;b&gt;三条层间规则&lt;/b&gt;&lt;br&gt;① 单向依赖：上层引用下层&lt;br&gt;② 开口覆盖：治理只许调严&lt;br&gt;③ 证据下沉：第三次才下沉" style="shape=note;size=12;whiteSpace=wrap;html=1;align=left;spacingLeft=6;fillColor=#fffde7;strokeColor=#fbc02d;fontFamily=Arial;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="320" width="220" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="note-governance" value="基座对所有工具调用一视同仁：身份透传和三级分权不看是谁实现的" style="shape=note;size=12;whiteSpace=wrap;html=1;align=left;spacingLeft=6;fillColor=#fffde7;strokeColor=#fbc02d;fontFamily=Arial;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="770" width="220" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="e-config-scenario" value="填开口" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;endFill=1;fontFamily=Arial;fontSize=11;labelBackgroundColor=#ffffff;strokeColor=#37474f;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="customer-config" target="scenario-pack">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="200" y="260" />
+              <mxPoint x="500" y="260" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-scenario-contract" value="只依赖契约" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;endFill=1;fontFamily=Arial;fontSize=11;labelBackgroundColor=#ffffff;strokeColor=#37474f;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="scenario-pack" target="contract">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-scenario-shared" value="引用" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;endFill=1;fontFamily=Arial;fontSize=11;labelBackgroundColor=#ffffff;strokeColor=#37474f;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.75;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="scenario-pack" target="shared">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="500" y="480" />
+              <mxPoint x="260" y="480" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-adapter-contract" value="按契约实现" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;endFill=1;fontFamily=Arial;fontSize=11;labelBackgroundColor=#ffffff;strokeColor=#37474f;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.75;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="customer-adapter" target="contract">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="860" y="480" />
+              <mxPoint x="620" y="480" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-adapter-sink" value="第三家后下沉" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;endFill=1;fontFamily=Arial;fontSize=11;labelBackgroundColor=#ffffff;strokeColor=#37474f;dashed=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="customer-adapter" target="std-impl">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-impl-contract" value="实现" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;endFill=1;fontFamily=Arial;fontSize=11;labelBackgroundColor=#ffffff;strokeColor=#37474f;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="std-impl" target="contract">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-shared-contract" value="只依赖契约" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;endFill=1;fontFamily=Arial;fontSize=11;labelBackgroundColor=#ffffff;strokeColor=#37474f;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="shared" target="contract">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-adapter-ext" value="读写" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;endFill=1;fontFamily=Arial;fontSize=11;labelBackgroundColor=#ffffff;startArrow=classic;startFill=1;strokeColor=#2e7d32;fontColor=#2e7d32;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="customer-adapter" target="ext-customer">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-impl-ext" value="读写" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;endFill=1;fontFamily=Arial;fontSize=11;labelBackgroundColor=#ffffff;startArrow=classic;startFill=1;strokeColor=#2e7d32;fontColor=#2e7d32;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="std-impl" target="ext-blacklake">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-contract-governance" value="调用受治理" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;endFill=1;fontFamily=Arial;fontSize=11;labelBackgroundColor=#ffffff;strokeColor=#37474f;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="contract" target="governance">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="560" y="700" />
+              <mxPoint x="440" y="700" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+<mxCell id="legend" value="图例" style="swimlane;startSize=28;collapsible=0;rounded=0;html=1;whiteSpace=wrap;fillColor=#fafafa;strokeColor=#90a4ae;fontStyle=1;fontFamily=Arial;fontSize=13;fontSize=12;startSize=24;" vertex="1" parent="1"><mxGeometry x="40" y="930" width="526" height="140" as="geometry" /></mxCell>
+<mxCell id="legend-agent" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1565c0;fontFamily=Arial;fontSize=12;" vertex="1" parent="legend"><mxGeometry x="10" y="32" width="36" height="22" as="geometry" /></mxCell>
+<mxCell id="legend-t-v-agent" value="智能体 Agent" style="text;html=1;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=11;" vertex="1" parent="legend"><mxGeometry x="56" y="32" width="118" height="22" as="geometry" /></mxCell>
+<mxCell id="legend-service" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e0f2f1;strokeColor=#00796b;fontFamily=Arial;fontSize=12;" vertex="1" parent="legend"><mxGeometry x="180" y="32" width="36" height="22" as="geometry" /></mxCell>
+<mxCell id="legend-t-v-service" value="服务 / 模块" style="text;html=1;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=11;" vertex="1" parent="legend"><mxGeometry x="226" y="32" width="118" height="22" as="geometry" /></mxCell>
+<mxCell id="legend-control" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#6a1b9a;fontFamily=Arial;fontSize=12;" vertex="1" parent="legend"><mxGeometry x="350" y="32" width="36" height="22" as="geometry" /></mxCell>
+<mxCell id="legend-t-v-control" value="编排 / 网关" style="text;html=1;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=11;" vertex="1" parent="legend"><mxGeometry x="396" y="32" width="118" height="22" as="geometry" /></mxCell>
+<mxCell id="legend-external" value="" style="rounded=1;arcSize=12;dashed=1;whiteSpace=wrap;html=1;fillColor=#eceff1;strokeColor=#455a64;fontFamily=Arial;fontSize=12;" vertex="1" parent="legend"><mxGeometry x="10" y="66" width="36" height="22" as="geometry" /></mxCell>
+<mxCell id="legend-t-v-external" value="外部系统" style="text;html=1;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=11;" vertex="1" parent="legend"><mxGeometry x="56" y="66" width="118" height="22" as="geometry" /></mxCell>
+<mxCell id="legend-e-e-sync-a" value="" style="ellipse;fillColor=#90a4ae;strokeColor=none;html=1;" vertex="1" parent="legend"><mxGeometry x="180" y="75" width="4" height="4" as="geometry" /></mxCell>
+<mxCell id="legend-e-e-sync-b" value="" style="ellipse;fillColor=#90a4ae;strokeColor=none;html=1;" vertex="1" parent="legend"><mxGeometry x="216" y="75" width="4" height="4" as="geometry" /></mxCell>
+<mxCell id="legend-e-e-sync" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;endFill=1;fontFamily=Arial;fontSize=11;labelBackgroundColor=#ffffff;strokeColor=#37474f;labelBackgroundColor=none;" edge="1" parent="legend" source="legend-e-e-sync-a" target="legend-e-e-sync-b"><mxGeometry relative="1" as="geometry" /></mxCell>
+<mxCell id="legend-t-e-sync" value="调用 / 数据流" style="text;html=1;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=11;" vertex="1" parent="legend"><mxGeometry x="226" y="66" width="118" height="22" as="geometry" /></mxCell>
+<mxCell id="legend-e-e-async-a" value="" style="ellipse;fillColor=#90a4ae;strokeColor=none;html=1;" vertex="1" parent="legend"><mxGeometry x="350" y="75" width="4" height="4" as="geometry" /></mxCell>
+<mxCell id="legend-e-e-async-b" value="" style="ellipse;fillColor=#90a4ae;strokeColor=none;html=1;" vertex="1" parent="legend"><mxGeometry x="386" y="75" width="4" height="4" as="geometry" /></mxCell>
+<mxCell id="legend-e-e-async" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;endFill=1;fontFamily=Arial;fontSize=11;labelBackgroundColor=#ffffff;strokeColor=#37474f;dashed=1;labelBackgroundColor=none;" edge="1" parent="legend" source="legend-e-e-async-a" target="legend-e-e-async-b"><mxGeometry relative="1" as="geometry" /></mxCell>
+<mxCell id="legend-t-e-async" value="异步 / 事件 / 消息" style="text;html=1;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=11;" vertex="1" parent="legend"><mxGeometry x="396" y="66" width="118" height="22" as="geometry" /></mxCell>
+<mxCell id="legend-e-e-readwrite-a" value="" style="ellipse;fillColor=#90a4ae;strokeColor=none;html=1;" vertex="1" parent="legend"><mxGeometry x="10" y="109" width="4" height="4" as="geometry" /></mxCell>
+<mxCell id="legend-e-e-readwrite-b" value="" style="ellipse;fillColor=#90a4ae;strokeColor=none;html=1;" vertex="1" parent="legend"><mxGeometry x="46" y="109" width="4" height="4" as="geometry" /></mxCell>
+<mxCell id="legend-e-e-readwrite" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;endFill=1;fontFamily=Arial;fontSize=11;labelBackgroundColor=#ffffff;startArrow=classic;startFill=1;strokeColor=#2e7d32;fontColor=#2e7d32;labelBackgroundColor=none;" edge="1" parent="legend" source="legend-e-e-readwrite-a" target="legend-e-e-readwrite-b"><mxGeometry relative="1" as="geometry" /></mxCell>
+<mxCell id="legend-t-e-readwrite" value="读写（双向）" style="text;html=1;align=left;verticalAlign=middle;fontFamily=Arial;fontSize=11;" vertex="1" parent="legend"><mxGeometry x="56" y="100" width="118" height="22" as="geometry" /></mxCell>
+</root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

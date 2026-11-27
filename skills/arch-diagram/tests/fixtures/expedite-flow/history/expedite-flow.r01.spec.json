@@ -1,0 +1,118 @@
+{
+  "title": "缺料催料流程（跨角色）",
+  "nodes": {
+    "planner": {
+      "label": "计划员",
+      "kind": "lane"
+    },
+    "system": {
+      "label": "系统",
+      "kind": "lane"
+    },
+    "buyer": {
+      "label": "采购员",
+      "kind": "lane"
+    },
+    "supplier": {
+      "label": "供应商",
+      "kind": "lane"
+    },
+    "found": {
+      "label": "发现缺料",
+      "kind": "step",
+      "group": "planner"
+    },
+    "track": {
+      "label": "跟踪到货",
+      "kind": "step",
+      "group": "planner"
+    },
+    "update": {
+      "label": "更新排产",
+      "kind": "step",
+      "group": "planner"
+    },
+    "end": {
+      "label": "结束",
+      "kind": "terminal",
+      "group": "planner"
+    },
+    "has_transit": {
+      "label": "是否有在途？",
+      "kind": "decision",
+      "group": "system"
+    },
+    "send": {
+      "label": "发送催料单",
+      "kind": "step",
+      "group": "system"
+    },
+    "urgent": {
+      "label": "是否紧急？",
+      "kind": "decision",
+      "group": "buyer"
+    },
+    "call": {
+      "label": "电话催料",
+      "kind": "step",
+      "group": "buyer"
+    },
+    "reply": {
+      "label": "回复交期",
+      "kind": "step",
+      "group": "supplier"
+    }
+  },
+  "edges": [
+    {
+      "from": "found",
+      "to": "has_transit",
+      "label": "提交缺料"
+    },
+    {
+      "from": "has_transit",
+      "to": "track",
+      "label": "是"
+    },
+    {
+      "from": "has_transit",
+      "to": "urgent",
+      "label": "否"
+    },
+    {
+      "from": "urgent",
+      "to": "send",
+      "label": "否"
+    },
+    {
+      "from": "urgent",
+      "to": "call",
+      "label": "是"
+    },
+    {
+      "from": "call",
+      "to": "reply",
+      "label": ""
+    },
+    {
+      "from": "send",
+      "to": "reply",
+      "label": "催料单"
+    },
+    {
+      "from": "reply",
+      "to": "update",
+      "label": "交期"
+    },
+    {
+      "from": "track",
+      "to": "update",
+      "label": "到货后（待确认）"
+    },
+    {
+      "from": "update",
+      "to": "end",
+      "label": ""
+    }
+  ]
+}

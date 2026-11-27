@@ -1,0 +1,29 @@
+{
+  "title": "t",
+  "nodes": {
+    "a": {
+      "label": "A & B <服务>",
+      "kind": "service"
+    },
+    "b": {
+      "label": "负责对接 ERP、MES、WMS 三套系统并在夜间批量计算全厂齐套率与缺料预警的核心服务",
+      "kind": "service"
+    },
+    "c": {
+      "label": "配置 \"灰度\" 开关",
+      "kind": "control"
+    }
+  },
+  "edges": [
+    {
+      "from": "a",
+      "to": "b",
+      "label": "读 & 写 <批量>"
+    },
+    {
+      "from": "b",
+      "to": "c",
+      "label": "\"同步\""
+    }
+  ]
+}

@@ -1,0 +1,245 @@
+{
+  "title": "黑湖 MES 平台 · 服务依赖",
+  "nodes": {
+    "web": {
+      "label": "Web 控制台",
+      "kind": "channel"
+    },
+    "app": {
+      "label": "移动 App",
+      "kind": "channel"
+    },
+    "bot": {
+      "label": "飞书机器人",
+      "kind": "channel"
+    },
+    "gw": {
+      "label": "API 网关",
+      "kind": "control"
+    },
+    "auth": {
+      "label": "认证服务",
+      "kind": "service"
+    },
+    "user": {
+      "label": "用户服务",
+      "kind": "service"
+    },
+    "order": {
+      "label": "订单服务",
+      "kind": "service"
+    },
+    "wo": {
+      "label": "工单服务",
+      "kind": "service"
+    },
+    "sched": {
+      "label": "排产服务",
+      "kind": "service"
+    },
+    "qc": {
+      "label": "质量服务",
+      "kind": "service"
+    },
+    "inv": {
+      "label": "库存服务",
+      "kind": "service"
+    },
+    "proc": {
+      "label": "采购服务",
+      "kind": "service"
+    },
+    "equip": {
+      "label": "设备服务",
+      "kind": "service"
+    },
+    "notify": {
+      "label": "通知服务",
+      "kind": "service"
+    },
+    "report": {
+      "label": "报表服务",
+      "kind": "service"
+    },
+    "copilot": {
+      "label": "AI 助手",
+      "kind": "agent"
+    },
+    "pg": {
+      "label": "PostgreSQL",
+      "kind": "datastore"
+    },
+    "redis": {
+      "label": "Redis",
+      "kind": "datastore"
+    },
+    "mq": {
+      "label": "Kafka",
+      "kind": "datastore"
+    },
+    "es": {
+      "label": "Elasticsearch",
+      "kind": "datastore"
+    },
+    "oss": {
+      "label": "对象存储",
+      "kind": "datastore"
+    },
+    "erp": {
+      "label": "ERP",
+      "kind": "external"
+    }
+  },
+  "edges": [
+    {
+      "from": "web",
+      "to": "gw",
+      "label": ""
+    },
+    {
+      "from": "app",
+      "to": "gw",
+      "label": ""
+    },
+    {
+      "from": "bot",
+      "to": "copilot",
+      "label": ""
+    },
+    {
+      "from": "gw",
+      "to": "auth",
+      "label": ""
+    },
+    {
+      "from": "gw",
+      "to": "order",
+      "label": ""
+    },
+    {
+      "from": "gw",
+      "to": "wo",
+      "label": ""
+    },
+    {
+      "from": "gw",
+      "to": "report",
+      "label": ""
+    },
+    {
+      "from": "gw",
+      "to": "copilot",
+      "label": ""
+    },
+    {
+      "from": "auth",
+      "to": "user",
+      "label": ""
+    },
+    {
+      "from": "auth",
+      "to": "redis",
+      "label": ""
+    },
+    {
+      "from": "order",
+      "to": "wo",
+      "label": ""
+    },
+    {
+      "from": "order",
+      "to": "inv",
+      "label": ""
+    },
+    {
+      "from": "wo",
+      "to": "sched",
+      "label": ""
+    },
+    {
+      "from": "wo",
+      "to": "qc",
+      "label": ""
+    },
+    {
+      "from": "wo",
+      "to": "equip",
+      "label": ""
+    },
+    {
+      "from": "sched",
+      "to": "inv",
+      "label": ""
+    },
+    {
+      "from": "inv",
+      "to": "proc",
+      "label": ""
+    },
+    {
+      "from": "proc",
+      "to": "erp",
+      "label": ""
+    },
+    {
+      "from": "qc",
+      "to": "oss",
+      "label": ""
+    },
+    {
+      "from": "equip",
+      "to": "mq",
+      "label": ""
+    },
+    {
+      "from": "notify",
+      "to": "bot",
+      "label": ""
+    },
+    {
+      "from": "mq",
+      "to": "notify",
+      "label": ""
+    },
+    {
+      "from": "report",
+      "to": "es",
+      "label": ""
+    },
+    {
+      "from": "copilot",
+      "to": "report",
+      "label": ""
+    },
+    {
+      "from": "copilot",
+      "to": "sched",
+      "label": ""
+    },
+    {
+      "from": "order",
+      "to": "pg",
+      "label": ""
+    },
+    {
+      "from": "wo",
+      "to": "pg",
+      "label": ""
+    },
+    {
+      "from": "inv",
+      "to": "pg",
+      "label": ""
+    },
+    {
+      "from": "user",
+      "to": "pg",
+      "label": ""
+    },
+    {
+      "from": "sched",
+      "to": "mq",
+      "label": ""
+    }
+  ]
+}

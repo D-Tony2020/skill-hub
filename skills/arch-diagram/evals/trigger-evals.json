@@ -1,0 +1,21 @@
+[
+  { "query": "把刚才讨论的 Agent 架构画成图", "should_trigger": true },
+  { "query": "帮我画一张 MES 和 ERP、WMS 之间的模块关系图", "should_trigger": true },
+  { "query": "图里加个质检 Agent，把记忆库改成共享的", "should_trigger": true },
+  { "query": "这轮架构图改了什么？", "should_trigger": true },
+  { "query": "架构图回到上一版", "should_trigger": true },
+  { "query": "把 kitting-agent.drawio 导出成 PNG 发我", "should_trigger": true },
+  { "query": "把这张架构图同步到飞书文档里", "should_trigger": true },
+  { "query": "画个采购到入库的泳道图，分采购、仓库、财务三个角色", "should_trigger": true },
+  { "query": "系统分层图更新一下，数据层加上 IoT 平台", "should_trigger": true },
+  { "query": "同事在飞书画板上改了架构图，合回来再继续改", "should_trigger": true },
+  { "query": "用这份产量数据画个各产线月度产能的柱状图", "should_trigger": false },
+  { "query": "画一张今年各区域销售额占比的饼图", "should_trigger": false },
+  { "query": "做一个排产看板页面的 UI 原型", "should_trigger": false },
+  { "query": "Mermaid 的时序图语法怎么写？给个例子讲讲", "should_trigger": false },
+  { "query": "把这份方案写进飞书文档，补全第三节", "should_trigger": false },
+  { "query": "把我这篇 Claude 文档同步到飞书云文档", "should_trigger": false },
+  { "query": "解释一下微服务架构和单体架构的区别", "should_trigger": false },
+  { "query": "把这个 Figma 设计稿改成深色主题", "should_trigger": false },
+  { "query": "飞书文档里那张表格帮我整理一下格式", "should_trigger": false }
+]

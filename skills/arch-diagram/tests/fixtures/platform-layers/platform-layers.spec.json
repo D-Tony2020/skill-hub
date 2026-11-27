@@ -1,0 +1,142 @@
+{
+  "title": "黑湖智能制造平台 · 分层架构",
+  "nodes": {
+    "access": {
+      "label": "接入层",
+      "kind": "group"
+    },
+    "feishu": {
+      "label": "飞书",
+      "kind": "channel",
+      "group": "access"
+    },
+    "wecom": {
+      "label": "企业微信",
+      "kind": "channel",
+      "group": "access"
+    },
+    "web": {
+      "label": "Web 控制台",
+      "kind": "channel",
+      "group": "access"
+    },
+    "app": {
+      "label": "应用层",
+      "kind": "group"
+    },
+    "kitting": {
+      "label": "齐套 Agent",
+      "kind": "agent",
+      "group": "app"
+    },
+    "expedite": {
+      "label": "催料 Agent",
+      "kind": "agent",
+      "group": "app"
+    },
+    "sched": {
+      "label": "排产 Agent",
+      "kind": "agent",
+      "group": "app",
+      "status": "tbd"
+    },
+    "capability": {
+      "label": "能力层",
+      "kind": "group"
+    },
+    "llmgw": {
+      "label": "LLM 网关",
+      "kind": "control",
+      "group": "capability"
+    },
+    "kb": {
+      "label": "知识库\n飞书知识库 or 自建？",
+      "kind": "datastore",
+      "group": "capability",
+      "status": "tbd"
+    },
+    "tools": {
+      "label": "工具注册中心",
+      "kind": "service",
+      "group": "capability"
+    },
+    "data": {
+      "label": "数据层",
+      "kind": "group"
+    },
+    "erp": {
+      "label": "ERP",
+      "kind": "external",
+      "group": "data"
+    },
+    "mes": {
+      "label": "MES",
+      "kind": "external",
+      "group": "data"
+    },
+    "wms": {
+      "label": "WMS",
+      "kind": "external",
+      "group": "data"
+    },
+    "k-planner": {
+      "label": "规划器\n拆解齐套任务",
+      "kind": "service",
+      "page": "齐套 Agent 内部"
+    },
+    "k-tools": {
+      "label": "工具调用\nERP / WMS / SRM",
+      "kind": "service",
+      "page": "齐套 Agent 内部"
+    },
+    "k-verify": {
+      "label": "结果校验\n齐套率复核",
+      "kind": "service",
+      "page": "齐套 Agent 内部"
+    },
+    "k-mem": {
+      "label": "记忆读写\n催料历史",
+      "kind": "datastore",
+      "page": "齐套 Agent 内部"
+    }
+  },
+  "edges": [
+    {
+      "from": "access",
+      "to": "app",
+      "label": "用户请求"
+    },
+    {
+      "from": "app",
+      "to": "capability",
+      "label": "调用模型 / 知识 / 工具"
+    },
+    {
+      "from": "capability",
+      "to": "data",
+      "label": "经工具读写业务数据"
+    },
+    {
+      "from": "k-planner",
+      "to": "k-tools",
+      "label": "执行计划"
+    },
+    {
+      "from": "k-tools",
+      "to": "k-verify",
+      "label": "工具结果"
+    },
+    {
+      "from": "k-verify",
+      "to": "k-planner",
+      "label": "不通过·重规划",
+      "type": "feedback"
+    },
+    {
+      "from": "k-planner",
+      "to": "k-mem",
+      "label": "读写",
+      "type": "readwrite"
+    }
+  ]
+}

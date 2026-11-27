@@ -1,0 +1,20 @@
+{
+  "title": "缺料齐套 Agent 架构",
+  "nodes": {
+    "sales":   {"label": "业务员", "kind": "actor"},
+    "feishu":  {"label": "飞书", "kind": "channel"},
+    "kitting": {"label": "齐套 Agent\n齐套率计算", "kind": "agent"},
+    "memory":  {"label": "催料记忆\n物料历史催料记录", "kind": "datastore"},
+    "erp":     {"label": "ERP\nBOM / 库存 / 采购单", "kind": "external"},
+    "wms":     {"label": "WMS\n在途库存", "kind": "external"}
+  },
+  "edges": [
+    {"from": "sales", "to": "feishu", "label": "发起查询"},
+    {"from": "feishu", "to": "kitting", "label": "查询请求"},
+    {"from": "kitting", "to": "erp", "label": "查 BOM / 库存"},
+    {"from": "kitting", "to": "erp", "label": "查采购单交期"},
+    {"from": "kitting", "to": "wms", "label": "查在途"},
+    {"from": "kitting", "to": "feishu", "label": "推送齐套报告"},
+    {"from": "kitting", "to": "memory", "label": "读写", "type": "readwrite"}
+  ]
+}

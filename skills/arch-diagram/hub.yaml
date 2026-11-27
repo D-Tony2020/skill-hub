@@ -1,0 +1,8 @@
+status: published
+version: 2.1.3
+owner: dean
+tags: [diagram, drawio, architecture, feishu]
+requires:
+  skills: [drawio-skill]
+  commands: [py]
+notes: "scope: team。py 为 Windows 写法，macOS / Linux 用 python3。另需 draw.io 桌面版（脚本自动定位，不要求在 PATH 上）。飞书同步可选，需 lark-cli 与用户本人授权。drawio-skill 尚未上 SkillHub，从 https://github.com/Agents365-ai/drawio-skill 安装到同一个 skills 目录。"

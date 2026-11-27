@@ -17,7 +17,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
-export const QA_VERSION = '0.2.0';
+export const QA_VERSION = '0.2.1';
 export const CONFIG_SCHEMA_FILE = 'config.schema.json';
 export const REPORT_FILE = 'QA_REPORT.md';
 export const EXCEPTIONS_FILE = 'qa-exceptions.json';
@@ -515,12 +515,13 @@ export function staticChecks(dir) {
     }
     const ok = evalCounts.tasks >= THRESHOLDS.minTasks && evalCounts.negatives >= THRESHOLDS.minNegatives && !problems.length;
     const detail = `任务用例 ${evalCounts.tasks} 条（要求 ≥ ${THRESHOLDS.minTasks}），不该触发用例 ${evalCounts.negatives} 条（要求 ≥ ${THRESHOLDS.minNegatives}），该触发用例 ${evalCounts.positives} 条${problems.length ? `；${problems.join('；')}` : ''}`;
-    gates.push(gate('G5', `evals 至少 ${THRESHOLDS.minTasks} 条任务用例 + ${THRESHOLDS.minNegatives} 条不该触发用例`, 'block', ok ? 'pass' : 'fail', detail));
+    // Evals are optional since 0.2.1 (owner decision): default QA is static only.
+    gates.push(gate('G5', `（可选）evals 至少 ${THRESHOLDS.minTasks} 条任务用例 + ${THRESHOLDS.minNegatives} 条不该触发用例`, 'info', ok ? 'pass' : 'warn', detail));
   }
 
   // G6-G8 need review.json; placeholders filled in by applyReview
-  gates.push(gate('G6', `任务评测通过率 ≥ ${pct(THRESHOLDS.taskPass)}，且不低于不装 Skill 的基线`, 'block', 'pending', '需要 skill-creator 评测结果'));
-  gates.push(gate('G7', `触发评测：该触发的 ≥ ${pct(THRESHOLDS.triggerHit)}，误触发 ≤ ${pct(THRESHOLDS.falseTrigger)}`, 'block', 'pending', '需要 skill-creator 触发评测结果'));
+  gates.push(gate('G6', `（可选）任务评测通过率 ≥ ${pct(THRESHOLDS.taskPass)}，且不低于不装 Skill 的基线`, 'info', 'skip', '默认不跑；需要时用 skill-creator 跑并写进 review.json'));
+  gates.push(gate('G7', `（可选）触发评测：该触发的 ≥ ${pct(THRESHOLDS.triggerHit)}，误触发 ≤ ${pct(THRESHOLDS.falseTrigger)}`, 'info', 'skip', '默认不跑；需要时用 skill-creator 跑并写进 review.json'));
   gates.push(gate('G8', `评分表总分 ≥ ${THRESHOLDS.rubricTotal}/10，且“安全”不为 0`, 'block', 'pending', '需要 Agent 按 references/rubric.md 打分'));
 
   // G9 install smoke: package copy is self-contained
@@ -551,9 +552,10 @@ export function staticChecks(dir) {
     const dropNote = droppedButRead.length
       ? `；${droppedButRead.join('、')} 没有扩展名，SkillHub 打包会去掉，而脚本或 SKILL.md 读取了它：冒烟必须在去掉这些文件的副本上跑，确认有回退（不允许靠删文件过关）`
       : '';
-    gates.push(gate('G9', '干净目录安装后可用（打包副本自包含 + 跑通一条评测）', 'block',
-      broken.length ? 'fail' : 'pending',
-      broken.length ? `安装副本缺：${broken.join('；')}${dropNote}` : `打包 ${pkg.length} 个文件，引用完整；还需在安装副本上跑一条评测${dropNote}`));
+    // Static part blocks; running an eval on the installed copy is optional.
+    gates.push(gate('G9', '打包副本自包含（SKILL.md 引用的文件都在打包里）', 'block',
+      broken.length ? 'fail' : (droppedButRead.length ? 'review' : 'pass'),
+      broken.length ? `安装副本缺：${broken.join('；')}${dropNote}` : `打包 ${pkg.length} 个文件，引用完整${dropNote ? `${dropNote}；Agent 读代码确认有回退后在 review.json 写 evals.smoke.ok=true` : ''}`));
   }
 
   // G10 changelog entry
@@ -838,7 +840,7 @@ export function applyReview(result, review) {
     const ok = rate >= THRESHOLDS.taskPass && (base === null || passed >= base);
     g.G6.status = ok ? 'pass' : 'fail';
     g.G6.detail = `${passed}/${total}（${pct(rate)}）${base !== null ? `，基线 ${base}/${total}` : '，没有基线对比'}${ev.runner ? `，${ev.runner}${ev.model ? ` / ${ev.model}` : ''}` : ''}`;
-    if (base === null) { g.G6.status = ok ? 'pending' : 'fail'; g.G6.detail += '；缺基线，补跑不装 Skill 的对照'; }
+    if (base === null) { g.G6.status = ok ? 'warn' : 'fail'; g.G6.detail += '；缺基线，补跑不装 Skill 的对照'; }
   }
 
   // G7 triggers
@@ -862,8 +864,8 @@ export function applyReview(result, review) {
   }
 
   // G9 smoke
-  if (g.G9.status === 'pending' && ev.smoke?.ok === true) { g.G9.status = 'pass'; if (ev.smoke.note) g.G9.detail += `；${ev.smoke.note}`; }
-  else if (g.G9.status === 'pending' && ev.smoke?.ok === false) { g.G9.status = 'fail'; g.G9.detail += `；${ev.smoke.note || '安装副本上的评测没通过'}`; }
+  if (['pending', 'review'].includes(g.G9.status) && ev.smoke?.ok === true) { g.G9.status = 'pass'; if (ev.smoke.note) g.G9.detail += `；${ev.smoke.note}`; }
+  else if (['pending', 'review'].includes(g.G9.status) && ev.smoke?.ok === false) { g.G9.status = 'fail'; g.G9.detail += `；${ev.smoke.note || '安装副本上的评测没通过'}`; }
 
   // S4 scanner findings: every MEDIUM+ finding is fixed or a registered exception
   const sc = r.scanner;
@@ -912,7 +914,7 @@ export function verdictOf(result) {
 // ---------------------------------------------------------------------------
 // Report
 
-const STATUS_ZH = { pass: '通过', fail: '未通过', warn: '警告', pending: '待评测', review: '待确认', info: '提示' };
+const STATUS_ZH = { pass: '通过', fail: '未通过', warn: '警告', pending: '待评审', review: '待确认', info: '提示', skip: '可选未跑' };
 const LEVEL_ZH = { block: '阻断', warn: '警告', info: '提示' };
 const cell = (s) => String(s ?? '').replace(/\|/g, '\\|').replace(/\n/g, ' ');
 
@@ -993,7 +995,7 @@ function main(argv) {
     const res = staticChecks(dir);
     res.verdict = verdictOf(res);
     if (flag('--json')) console.log(JSON.stringify(res, null, 2));
-    else console.log(`${summary(res)}\n\n静态检查结论：${VERDICTS[res.verdict].zh}（G4/G6/G7/G8/G9，以及待确认的 G16，需要 review.json 才能有结论）`);
+    else console.log(`${summary(res)}\n\n静态检查结论：${VERDICTS[res.verdict].zh}（G4、G8 评分表、S4 扫描处置，以及待确认的 G2/G9/G16，需要 review.json 才能有结论）`);
     return res.gates.some((g) => g.level === 'block' && g.status === 'fail') ? 1 : 0;
   }
   if (cmd === 'scan') {

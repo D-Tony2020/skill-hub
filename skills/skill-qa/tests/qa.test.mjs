@@ -168,3 +168,20 @@ test('verdict is include only when every blocking gate passes', () => {
   const unsafe = qa.applyReview(qa.staticChecks(dir), { ...review, rubric: { ...review.rubric, safety: { score: 0 } } });
   assert.equal(unsafe.verdict, 'reject');
 });
+
+test('evals are optional: a skill with no evals and no eval results can be include', () => {
+  const dir = makeSkill({});
+  const review = {
+    rubric: { trigger: { score: 2 }, actionable: { score: 2 }, deterministic: { score: 1 }, safety: { score: 2 }, portable: { score: 2 } },
+    scanner: { available: false, note: 'test' },
+    requires_confirmed: true,
+  };
+  const res = qa.applyReview(qa.staticChecks(dir), review);
+  assert.equal(res.verdict, 'include', res.gates.filter((g) => g.level === 'block' && g.status !== 'pass').map((g) => `${g.id} ${g.status} ${g.detail}`).join('\n'));
+  for (const id of ['G5', 'G6', 'G7']) assert.notEqual(gateOf(res, id).level, 'block', id);
+  assert.equal(gateOf(res, 'G6').status, 'skip');
+  // Evals that were run and failed are reported, but do not block.
+  const failed = qa.applyReview(qa.staticChecks(dir), { ...review, evals: { tasks: { total: 4, passed: 1, baseline_passed: 1 } } });
+  assert.equal(gateOf(failed, 'G6').status, 'fail');
+  assert.equal(failed.verdict, 'include');
+});

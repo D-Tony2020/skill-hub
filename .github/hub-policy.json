@@ -1,0 +1,5 @@
+{
+  "$comment": "Auto-merge policy read by `node tools/hub/cli.mjs policy` (the policy-gate CI job). Changing this file is itself a human-only change.",
+  "autoMergeAuthors": ["D-Tony2020", "claude[bot]"],
+  "humanOnlyPaths": [".github/**", "tools/hub/policy.mjs", "tools/hub/publish-local.mjs", "package.json", "package-lock.json"]
+}

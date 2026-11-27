@@ -1,0 +1,25 @@
+# Local additions on top of the official compose.release.yml. Always start the Hub through
+# ops\hub.ps1 (or pass both -f files) so these stay applied.
+#  - web UI defaults to Simplified Chinese
+#  - container logs are rotated (10 MB x 5 per container)
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  web:
+    logging: *logging
+    volumes:
+      - ./custom/90-default-zh.sh:/docker-entrypoint.d/90-default-zh.sh:ro
+  server:
+    logging: *logging
+  skill-scanner:
+    logging: *logging
+  postgres:
+    logging: *logging
+  redis:
+    logging: *logging
+  storage-permissions:
+    logging: *logging

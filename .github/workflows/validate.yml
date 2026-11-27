@@ -39,3 +39,24 @@ jobs:
           SKILL_QA_NO_AUTO_IDENTITY: '1'
       - name: Claude Code plugin validator
         run: npx -y @anthropic-ai/claude-code@latest plugin validate .
+
+  # Machine replacement for "a human reads the PR before merging" (Skill Hub Docs §2.5).
+  # Green = this PR may be auto-merged; red = it needs a human (the reasons are in the job summary).
+  # Make it a required check together with `validate` once branch protection is on.
+  policy-gate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Auto-merge policy
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: node tools/hub/cli.mjs policy --base "origin/$BASE_REF"

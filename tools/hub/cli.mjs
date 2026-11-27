@@ -12,6 +12,7 @@
 //   node tools/hub/cli.mjs suite [--check] [--json]                             infra suite members vs the repo; what to enter in SkillHub's suite editor
 //   node tools/hub/cli.mjs new <name> [--owner o]                               scaffold skills/<name> (draft) with hub.yaml, CHANGELOG, evals, INTENT.md
 //   node tools/hub/cli.mjs upstream <skill> --from <dir> --commit <sha>         refresh a mirrored skill from a local upstream checkout
+//   node tools/hub/cli.mjs policy --base <ref> [--author <login>] [--json]      auto-merge policy gate for a PR (exit 1 = needs a human)
 import fs from 'node:fs';
 import os from 'node:os';
 import { spawnSync } from 'node:child_process';
@@ -24,6 +25,7 @@ import {
 import { reportStatus, staticChecks, VERDICTS } from '../../skills/skill-qa/scripts/qa.mjs';
 import { readIntent, initIntent } from '../../skills/skill-intent/scripts/intent.mjs';
 import { suiteReport, syncUpstream, scaffoldSkill } from './chain.mjs';
+import { loadPolicy, evaluate } from './policy.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const MANIFEST = path.join(ROOT, '.claude-plugin', 'marketplace.json');
@@ -256,7 +258,51 @@ function upstreamCmd(name) {
   return 0;
 }
 
+
+// Files that never ship in a release package: changing only these needs no version bump.
+const NON_PACKAGE = /^skills\/[^/]+\/(INTENT\.md|QA_REPORT\.md|qa-exceptions\.json|CHANGELOG\.md|evals\/|tests\/)/;
+
+function git(...a) {
+  const r = spawnSync('git', a, { cwd: ROOT, encoding: 'utf8' });
+  if (r.status !== 0) throw new Error(`git ${a.join(' ')}: ${r.stderr.trim()}`);
+  return r.stdout;
+}
+
+function baseVersionOf(base, name) {
+  for (const f of ['hub.yaml', 'VERSION']) {
+    const r = spawnSync('git', ['show', `${base}:skills/${name}/${f}`], { cwd: ROOT, encoding: 'utf8' });
+    if (r.status !== 0) continue;
+    if (f === 'VERSION') return r.stdout.trim();
+    const m = r.stdout.match(/^version:\s*["']?([^"'\s]+)/m);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+function policyCmd(json) {
+  const base = flag('--base');
+  if (!base) { console.error('usage: policy --base <ref> [--author <login>] [--json]'); return 2; }
+  const author = flag('--author') ?? process.env.PR_AUTHOR ?? '';
+  const files = git('diff', '--name-only', `${base}...HEAD`).split('\n').filter(Boolean);
+  const pkgChanged = new Set(files.filter((f) => !NON_PACKAGE.test(f)).map((f) => f.match(/^skills\/([^/]+)\//)?.[1]).filter(Boolean));
+  const names = [...new Set(files.map((f) => f.match(/^skills\/([^/]+)\//)?.[1]).filter(Boolean))];
+  const baseVersions = Object.fromEntries(names.map((n) => [n, baseVersionOf(base, n)]));
+  const r = evaluate({ files, author, policy: loadPolicy(ROOT), skills: loadSkills(ROOT), baseVersions, contentChangedFor: (n) => pkgChanged.has(n) });
+  if (json) console.log(JSON.stringify(r, null, 2));
+  else {
+    console.log(r.autoMerge ? 'policy: AUTO-MERGE ALLOWED' : 'policy: NEEDS A HUMAN');
+    for (const s of r.skills) console.log(`  ${s.problems.length ? 'FAIL' : 'ok  '} ${s.name} ${s.status}${s.version ? ` v${s.version}` : ''}${s.note ? ` (${s.note})` : ''}`);
+    for (const b of r.blockers) console.log(`  - ${b}`);
+  }
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    const lines = [`### Policy gate: ${r.autoMerge ? 'auto-merge allowed' : 'needs a human'}`, '', ...r.skills.map((s) => `- ${s.problems.length ? '❌' : '✅'} \`${s.name}\` ${s.status}${s.version ? ` v${s.version}` : ''}`), ...r.blockers.map((b) => `- ${b}`)];
+    fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join('\n')}\n`);
+  }
+  return r.autoMerge ? 0 : 1;
+}
+
 const handlers = {
+  policy: () => policyCmd(args.includes('--json')),
   chain: () => chainCmd(args.find((a) => !a.startsWith('--')), args.includes('--json')),
   suite: () => suiteCmd(args.includes('--check'), args.includes('--json')),
   new: () => newCmd(args[0]),
@@ -273,7 +319,7 @@ const handlers = {
 };
 
 if (!handlers[command]) {
-  console.error('usage: cli.mjs <validate|build [--check]|list [--json]|files <skill>|import <dir>|bump <skill> <part>|install <skill>|status|qa [skill] [--strict]|chain [skill]|suite [--check]|new <name>|upstream <skill> --from <dir> --commit <sha>>');
+  console.error('usage: cli.mjs <validate|build [--check]|list [--json]|files <skill>|import <dir>|bump <skill> <part>|install <skill>|status|qa [skill] [--strict]|chain [skill]|suite [--check]|new <name>|upstream <skill> --from <dir> --commit <sha>|policy --base <ref>>');
   process.exit(2);
 }
 try {
